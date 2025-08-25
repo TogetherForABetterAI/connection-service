@@ -1,0 +1,14 @@
+services:
+  app:
+    build: .
+    container_name: gateway-container
+    networks:
+      - tpp-network
+    ports:
+      - "${APP_PORT}:${APP_PORT}"
+    environment:
+      - ENVIRONMENT=${ENVIRONMENT}
+
+networks:
+  tpp-network:
+    external: true
