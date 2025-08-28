@@ -21,3 +21,22 @@ type ConnectResponse struct {
     Status  string `json:"status"`
     Message string `json:"message"`
 }
+
+// class TokenValidateResponse(BaseModel):
+//     """Schema for token validation response"""
+
+//     is_valid: bool
+//     token_id: Optional[uuid.UUID] = None
+//     expires_at: Optional[datetime] = None
+//     usage_count: Optional[int] = None
+//     max_uses: Optional[int] = None
+//     uses_remaining: Optional[int] = None
+
+type TokenValidateResponse struct {
+    IsValid       bool      `json:"is_valid"`
+    TokenID      *uuid.UUID `json:"token_id,omitempty"`
+    ExpiresAt    *time.Time `json:"expires_at,omitempty"`
+    UsageCount   *int       `json:"usage_count,omitempty"`
+    MaxUses      *int       `json:"max_uses,omitempty"`
+    UsesRemaining *int      `json:"uses_remaining,omitempty"`
+}
