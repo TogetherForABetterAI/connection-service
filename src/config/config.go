@@ -17,7 +17,7 @@ type GlobalConfig struct {
 	AppPort string
 }
 
-func InitializeConfig() *GlobalConfig {
+func InitializeConfig() GlobalConfig {
 	// Get RabbitMQ connection details from environment
 	rabbitHost := os.Getenv("RABBITMQ_HOST")
 	if rabbitHost == "" {
@@ -77,8 +77,8 @@ func InitializeConfig() *GlobalConfig {
 }
 
 
-var globalConfig config.GlobalConfig
+var Config GlobalConfig
 
 func init() {
-	globalConfig = config.InitializeConfig()
+	Config = InitializeConfig()
 }

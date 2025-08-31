@@ -5,11 +5,17 @@ import (
 	"github.com/sirupsen/logrus"
 	"auth-gateway/src/models"
 	"net/http"
-	"auth-gateway/src/pb"
-	"auth-gateway/src/grpc/client"
+	pb "auth-gateway/src/pb/new-client-service"
 	"auth-gateway/src/config"
 	"google.golang.org/grpc" 
 	"google.golang.org/grpc/credentials/insecure"
+	"context"
+	"fmt"
+	"time"
+	"io"
+	"encoding/json"
+	"bytes"
+
 )
 
 type Controller struct {
@@ -24,11 +30,14 @@ func (c *Controller) notifyNewClient(serviceAddr string, newClientRequest *pb.Ne
 	}
 	defer conn.Close()
 	
-	client := pb.NewCalibrationServiceClient(conn)
+	client := pb.NewClientNotificationServiceClient(conn)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	
-	return client.NotifyNewClient(ctx, newClientRequest)
+	if _, err := client.NotifyNewClient(ctx, newClientRequest); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (c *Controller) validateToken(token, clientID string) (*models.TokenValidateResponse, error) {
@@ -83,7 +92,7 @@ func (c *Controller) Connect(context *gin.Context) {
 		return
 	}
 
-	err := validateToken(reqBody.Token, reqBody.ClientId)
+	_, err = c.validateToken(reqBody.Token, reqBody.ClientId)
 	if err != nil {
 		c.sendError(context, http.StatusUnauthorized, "Unauthorized", "Token validation failed: "+err.Error())
 		return
@@ -94,13 +103,13 @@ func (c *Controller) Connect(context *gin.Context) {
 		InputsFormat: reqBody.InputsFormat,
 		OutputsFormat: reqBody.OutputsFormat,
 	}
-	err := notifyNewClient(config.globalConfig.CalibrationServiceAddr, newClientRequest)
+	err = c.notifyNewClient(config.Config.CalibrationServiceAddr, newClientRequest)
 	if err != nil {
 		c.sendError(context, http.StatusBadRequest, "Bad Request", "Failed to connect to calibration service: "+err.Error())
 		return
 	}
 
-	err = notifyNewClient(config.globalConfig.DataDispatcherServiceAddr, newClientRequest)
+	err = c.notifyNewClient(config.Config.DataDispatcherServiceAddr, newClientRequest)
 	if err != nil {
 		c.sendError(context, http.StatusBadRequest, "Bad Request", "Failed to connect to data dispatcher service: "+err.Error())
 		return

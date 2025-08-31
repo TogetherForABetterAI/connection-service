@@ -7,11 +7,9 @@ RUN go mod download
 
 COPY . .
 WORKDIR /app/src
-RUN go mod tidy
-
 RUN go build -o app-binary main.go
 
 FROM alpine:latest
-COPY --from=builder /auth-gateway /auth-gateway
+COPY --from=builder /app/src/app-binary /auth-gateway
 
 CMD ["/auth-gateway"]

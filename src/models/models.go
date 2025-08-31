@@ -1,5 +1,9 @@
 package models
 
+import (
+    "github.com/google/uuid"
+    "time"
+)
 
 // APIError represents an error response in the API, according to RFC 7807.
 type APIError struct {
@@ -12,9 +16,10 @@ type APIError struct {
 
 // ConnectRequest represents the body of a request to create a snap.
 type ConnectRequest struct {
+    ClientId  string `json:"client_id"`
     Token     string `json:"token"`
-	InputsFmt string `json:"inputs_fmt"`
-	OutputsFmt string `json:"outputs_fmt"`
+	InputsFormat string `json:"inputs_format"`
+	OutputsFormat string `json:"outputs_format"`
 }
 
 type ConnectResponse struct {

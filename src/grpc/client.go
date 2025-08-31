@@ -4,24 +4,25 @@ import (
 	"google.golang.org/grpc"
 	pb "auth-gateway/src/pb/new-client-service"
 	"context"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 
-type Client struct {
+type NotificationClient struct {
 	conn   *grpc.ClientConn
 	client pb.ClientNotificationServiceClient
 }
 
-func NewClient(address string) (*Client, error) {
+func NewClient(address string) (*NotificationClient, error) {
 	conn, err := grpc.Dial(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, err
 	}
 	client := pb.NewClientNotificationServiceClient(conn)
-	return &Client{conn: conn, client: client}, nil
+	return &NotificationClient{conn: conn, client: client}, nil
 }
 
-func (c *Client) NotifyNewClient(ctx context.Context, newClientRequest *pb.NewClientRequest) error {
+func (c *NotificationClient) NotifyNewClient(ctx context.Context, newClientRequest *pb.NewClientRequest) error {
 	_, err := c.client.NotifyNewClient(ctx, newClientRequest)
 	return err
 }
