@@ -4,6 +4,7 @@ import (
     "github.com/gin-gonic/gin"
     "github.com/sirupsen/logrus"
     "auth-gateway/src/controller"
+    "auth-gateway/src/service"
 )
 
 type Router struct {
@@ -17,7 +18,10 @@ func (r Router) SetUpRouter() (*gin.Engine, error) {
     router := gin.Default()
     controller := controller.Controller{
         Logger: r.Logger,
-    } 
+        Service: service.NewService(r.Logger),
+    }
     router.POST("/connect", controller.Connect)
+    router.POST("/tokens/create", controller.CreateToken)
+    router.POST("/users/create", controller.CreateUser)
     return router, nil
 }

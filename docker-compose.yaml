@@ -1,7 +1,8 @@
 services:
-  app:
+  auth-gateway:
+    container_name: auth-gateway
     build: .
-    container_name: gateway-container
+    env_file: .env
     networks:
       - tpp-network
     ports:

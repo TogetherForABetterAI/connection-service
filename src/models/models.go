@@ -18,8 +18,6 @@ type APIError struct {
 type ConnectRequest struct {
     ClientId  string `json:"client_id"`
     Token     string `json:"token"`
-	InputsFormat string `json:"inputs_format"`
-	OutputsFormat string `json:"outputs_format"`
 }
 
 type ConnectResponse struct {
@@ -44,4 +42,21 @@ type TokenValidateResponse struct {
     UsageCount   *int       `json:"usage_count,omitempty"`
     MaxUses      *int       `json:"max_uses,omitempty"`
     UsesRemaining *int      `json:"uses_remaining,omitempty"`
+}
+
+type TokenCreateRequest struct {
+    ClientId string `json:"client_id"`    
+}
+
+type TokenCreateResponse struct {
+    Token      string    `json:"token"`
+    ExpiresAt  time.Time `json:"expires_at"`
+}
+
+type UserCreateRequest struct {
+    ClientId       string `json:"client_id"`
+    Username       string `json:"username"`
+    Email          string `json:"email"`
+    InputsFormat   string `json:"inputs_format"`
+    OutputsFormat  string `json:"outputs_format"`
 }
