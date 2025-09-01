@@ -54,9 +54,12 @@ type TokenCreateResponse struct {
 }
 
 type UserCreateRequest struct {
-    ClientId       string `json:"client_id"`
     Username       string `json:"username"`
     Email          string `json:"email"`
     InputsFormat   string `json:"inputs_format"`
     OutputsFormat  string `json:"outputs_format"`
+}
+
+type UserCreateResponse struct {
+    ClientId string `json:"client_id"`
 }

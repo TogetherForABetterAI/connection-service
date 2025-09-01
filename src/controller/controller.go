@@ -54,8 +54,8 @@ func (c *Controller) Connect(context *gin.Context) {
 
 	newClientRequest := &pb.NewClientRequest{
 		ClientId: reqBody.ClientId,
-		InputsFormat: reqBody.InputsFormat,
-		OutputsFormat: reqBody.OutputsFormat,
+		InputsFormat: "-",
+		OutputsFormat: "-",
 	}
 	err = NotifyNewClient(config.Config.CalibrationServiceAddr, newClientRequest)
 	if err != nil {
@@ -122,13 +122,12 @@ func (c *Controller) CreateUser(context *gin.Context) {
 	}
 
 	postBody, err := json.Marshal(map[string]interface{}{
-		"client_id":     reqBody.ClientId,
 		"username":      reqBody.Username,
 		"email":         reqBody.Email,
 		"inputs_format": reqBody.InputsFormat,
 		"outputs_format": reqBody.OutputsFormat,
 	})
-	
+
 	if err != nil {
 		c.sendError(context, http.StatusInternalServerError, "Internal Error", "Failed to marshal request body: "+err.Error(), "https://auth-gateway.com/internal-error", "/tokens/create")
 		return
@@ -139,8 +138,21 @@ func (c *Controller) CreateUser(context *gin.Context) {
 		c.sendError(context, http.StatusInternalServerError, "Internal Error", "Failed to send request: "+err.Error(), "https://auth-gateway.com/internal-error", "/tokens/create")
 		return
 	}
-	context.JSON(resp.StatusCode, gin.H{"client_id" : reqBody.ClientId})}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		c.sendError(context, http.StatusInternalServerError, "Internal Error", "Failed to read response body: "+err.Error(), "https://auth-gateway.com/internal-error", "/tokens/create")
+		return
+	}
 
+	var userCreateResp models.UserCreateResponse
+	if err := json.Unmarshal(body, &userCreateResp); err != nil {
+		c.sendError(context, http.StatusInternalServerError, "Internal Error", "Failed to unmarshal response body: "+err.Error(), "https://auth-gateway.com/internal-error", "/tokens/create")
+		return
+	}
+
+	context.JSON(resp.StatusCode, userCreateResp)
+}
 
 func NotifyNewClient(serviceAddr string, newClientRequest *pb.NewClientRequest) error {
 	conn, err := grpc.Dial(serviceAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
