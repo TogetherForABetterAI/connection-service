@@ -56,6 +56,7 @@ type TokenCreateResponse struct {
 type UserCreateRequest struct {
     Username       string `json:"username"`
     Email          string `json:"email"`
+    ModelType      string `json:"model_type"`
     InputsFormat   string `json:"inputs_format"`
     OutputsFormat  string `json:"outputs_format"`
 }
