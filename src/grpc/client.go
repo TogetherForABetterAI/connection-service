@@ -1,12 +1,12 @@
 package client
 
 import (
-	"google.golang.org/grpc"
 	pb "auth-gateway/src/pb/new-client-service"
 	"context"
+
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
-
 
 type NotificationClient struct {
 	conn   *grpc.ClientConn

@@ -6,15 +6,15 @@ import (
 )
 
 type GlobalConfig struct {
-	LogLevel   string
-	RabbitHost string
-	RabbitPort int32
-	RabbitUser string
-	RabbitPass string
-	DatasetAddr string
-	CalibrationServiceAddr string
+	LogLevel                  string
+	RabbitHost                string
+	RabbitPort                int32
+	RabbitUser                string
+	RabbitPass                string
+	DatasetAddr               string
+	CalibrationServiceAddr    string
 	DataDispatcherServiceAddr string
-	AppPort string
+	AppPort                   string
 }
 
 func InitializeConfig() GlobalConfig {
@@ -50,13 +50,13 @@ func InitializeConfig() GlobalConfig {
 	// Get calibration service address from environment or use default
 	calibrationAddr := os.Getenv("CALIBRATION_SERVICE_ADDR")
 	if calibrationAddr == "" {
-		calibrationAddr = "calibration-service:8001"
+		calibrationAddr = "calibration-service:50052"
 	}
 
 	// Get data dispatcher service address from environment or use default
 	dataDispatcherAddr := os.Getenv("DATA_DISPATCHER_SERVICE_ADDR")
 	if dataDispatcherAddr == "" {
-		dataDispatcherAddr = "data-dispatcher-service:50051"
+		dataDispatcherAddr = "data-dispatcher-service:50058"
 	}
 
 	appPort := os.Getenv("APP_PORT")
@@ -65,17 +65,16 @@ func InitializeConfig() GlobalConfig {
 	}
 
 	return GlobalConfig{
-		LogLevel:   logLevel,
-		RabbitHost: rabbitHost,
-		RabbitPort: rabbitPort,
-		RabbitUser: rabbitUser,
-		RabbitPass: rabbitPass,
-		CalibrationServiceAddr: calibrationAddr,
+		LogLevel:                  logLevel,
+		RabbitHost:                rabbitHost,
+		RabbitPort:                rabbitPort,
+		RabbitUser:                rabbitUser,
+		RabbitPass:                rabbitPass,
+		CalibrationServiceAddr:    calibrationAddr,
 		DataDispatcherServiceAddr: dataDispatcherAddr,
-		AppPort: appPort,
+		AppPort:                   appPort,
 	}
 }
-
 
 var Config GlobalConfig
 

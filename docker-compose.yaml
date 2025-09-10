@@ -9,6 +9,8 @@ services:
       - "${APP_PORT}:${APP_PORT}"
     environment:
       - ENVIRONMENT=${ENVIRONMENT}
+    volumes:
+      - .:/app
 
 networks:
   tpp-network:
