@@ -1,20 +1,32 @@
 package main
 
 import (
-	"auth-gateway/logger"
 	"auth-gateway/src/config"
 	"auth-gateway/src/router"
 	"fmt"
+	"log"
+
+	_ "auth-gateway/src/docs"
+
+	_ "github.com/swaggo/files"
+	_ "github.com/swaggo/gin-swagger"
 )
 
+// @title Auth Gateway API
+// @version 1.0
+// @description API Gateway for authentication and authorization
+
+// @contact.name   Auth Gateway Team
+// @contact.url    https://github.com/your-org/auth-gateway
+// @contact.email  auth-gateway@example.com
+
 func main() {
-	logger.Init()
-	router := router.Router{logger.Logger}
-	r, err_router := router.SetUpRouter()
-	if err_router != nil {
-		logger.Logger.Fatal("Error while setting up router: ", err_router.Error())
+	config, err := config.NewConfig()
+	if err != nil {
+		log.Fatalf("Failed to load configuration: %v", err)
 	}
-	if err_router = r.Run(fmt.Sprintf("0.0.0.0:%s", config.Config.AppPort)); err_router != nil {
-		logger.Logger.Fatal("Error while running the server: ", err_router.Error())
+	r := router.NewRouter(config)
+	if err := r.Run(fmt.Sprintf("%s:%s", config.Host, config.Port)); err != nil {
+		log.Fatalf("Failed to start server: %v", err)
 	}
 }
