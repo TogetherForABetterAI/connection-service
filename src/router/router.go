@@ -1,34 +1,31 @@
 package router
 
 import (
+	"auth-gateway/src/config"
 	"auth-gateway/src/controller"
+	"auth-gateway/src/rabbitmq"
 	"auth-gateway/src/service"
-
-	docs "auth-gateway/src/docs"
+	"log"
+	"log/slog"
 
 	"github.com/gin-gonic/gin"
-	"github.com/sirupsen/logrus"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
-type Router struct {
-	Logger *logrus.Logger
-}
-
-// @title           Swagger Auth Gateway API
+// @title           Auth Gateway API
 // @version         1.0
-// @description     This is a sample server celler server.
+// @description     API Gateway for authentication and authorization services
 // @termsOfService  http://swagger.io/terms/
 
-// @contact.name   API Support
-// @contact.url    http://www.swagger.io/support
-// @contact.email  support@swagger.io
+// @contact.name   Auth Gateway Team
+// @contact.url    https://github.com/your-org/auth-gateway
+// @contact.email  auth-gateway@example.com
 
 // @license.name  Apache 2.0
 // @license.url   http://www.apache.org/licenses/LICENSE-2.0.html
 
-// @host      localhost:80
+// @host      localhost:8080
 // @BasePath  /
 
 // @securityDefinitions.basic  BasicAuth
@@ -36,28 +33,55 @@ type Router struct {
 // @externalDocs.description  OpenAPI
 // @externalDocs.url          https://swagger.io/resources/open-api/
 
-// SetUpRouter sets up the router for the auth-gateway.
-// It creates a new gin.Engine, initializes the necessary controllers and routes,
-// and returns the router and any error encountered.
-func (r Router) SetUpRouter() (*gin.Engine, error) {
-	router := gin.Default()
-	controller := controller.Controller{
-		Logger:  r.Logger,
-		Service: service.NewService(r.Logger),
-	}
-	docs.SwaggerInfo.BasePath = "/"
-	tokens_group := router.Group("/tokens")
-	{
-		tokens_group.POST("/create", controller.CreateToken)
-
-	}
-	users_group := router.Group("/users")
-	{
-		users_group.POST("/connect", controller.Connect)
-		users_group.POST("/create", controller.CreateUser)
+func createRouterFromConfig(config config.GlobalConfig) *gin.Engine {
+	if config.LogLevel == "production" {
+		gin.SetMode(gin.ReleaseMode)
+	} else {
+		gin.SetMode(gin.DebugMode)
 	}
 
-	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-	router.POST("/test-webhook", controller.TestWebhook)
-	return router, nil
+	r := gin.Default()
+	return r
+}
+
+func InitializeUserRoutes(r *gin.Engine, connectionController *controller.ConnectionController) {
+	usersGroup := r.Group("/users")
+	{
+		usersGroup.POST("/connect", connectionController.Connect)
+	}
+}
+
+func NewRouter(config config.GlobalConfig) *gin.Engine {
+	r := createRouterFromConfig(config)
+
+	// Initialize structured logger
+	slog.Info("Initializing Auth Gateway router")
+
+	// Initialize RabbitMQ publisher
+	publisher, err := rabbitmq.NewAMQPPublisherFromConfig(config)
+	if err != nil {
+		log.Fatalf("Failed to create RabbitMQ publisher: %v", err)
+	}
+
+	// Initialize services
+	connectionService := service.NewConnectionService(publisher)
+
+	// Initialize controllers (no logger dependency needed)
+	connectionController := controller.NewConnectionController(connectionService)
+
+	// Initialize all routes
+	InitializeRoutes(r, connectionController)
+
+	// Swagger documentation
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
+	slog.Info("Auth Gateway router initialized successfully")
+	return r
+}
+
+func InitializeRoutes(
+	r *gin.Engine,
+	connectionController *controller.ConnectionController,
+) {
+	InitializeUserRoutes(r, connectionController)
 }
