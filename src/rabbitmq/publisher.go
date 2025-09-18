@@ -1,6 +1,11 @@
 package rabbitmq
 
-import "github.com/streadway/amqp"
+import (
+	"auth-gateway/src/config"
+	"fmt"
+
+	"github.com/streadway/amqp"
+)
 
 // Publisher defines the interface for publishing messages to RabbitMQ.
 type Publisher interface {
@@ -10,6 +15,12 @@ type Publisher interface {
 type AMQPPublisher struct {
 	conn    *amqp.Connection
 	channel *amqp.Channel
+}
+
+// NewAMQPPublisherFromConfig creates a new AMQPPublisher using configuration.
+func NewAMQPPublisherFromConfig(cfg config.GlobalConfig) (*AMQPPublisher, error) {
+	amqpURL := fmt.Sprintf("amqp://%s:%s@%s:%d/", cfg.RabbitUser, cfg.RabbitPass, cfg.RabbitHost, cfg.RabbitPort)
+	return NewAMQPPublisher(amqpURL)
 }
 
 // NewAMQPPublisher creates a new AMQPPublisher and connects to RabbitMQ.
