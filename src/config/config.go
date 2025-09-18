@@ -64,11 +64,6 @@ func NewConfig() (GlobalConfig, error) {
 		return GlobalConfig{}, fmt.Errorf("DATA_DISPATCHER_SERVICE_ADDR environment variable is required")
 	}
 
-	appPort := os.Getenv("APP_PORT")
-	if appPort == "" {
-		return GlobalConfig{}, fmt.Errorf("APP_PORT environment variable is required")
-	}
-
 	host := os.Getenv("HOST")
 	if host == "" {
 		return GlobalConfig{}, fmt.Errorf("HOST environment variable is required")
@@ -89,7 +84,6 @@ func NewConfig() (GlobalConfig, error) {
 		DataDispatcherServiceAddr: dataDispatcherAddr,
 		Host:                      host,
 		Port:                      port,
-		AppPort:                   appPort,
 	}, nil
 }
 
