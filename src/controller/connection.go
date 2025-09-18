@@ -37,6 +37,17 @@ func (c *ConnectionController) sendError(ctx *gin.Context, status int, title str
 	c.Logger.Error(title + ": " + detail)
 }
 
+// @Summary Connect authenticated client
+// @Description Connects an authenticated client and notifies other services about the new connection
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param ConnectRequest body models.ConnectRequest true "Connect Request with client ID and token"
+// @Success 200 {object} models.ConnectResponse
+// @Failure 400 {object} models.APIError
+// @Failure 401 {object} models.APIError
+// @Failure 500 {object} models.APIError
+// @Router /users/connect [post]
 func (c *ConnectionController) Connect(ctx *gin.Context) {
 	var reqBody models.ConnectRequest
 	if err := ctx.ShouldBindJSON(&reqBody); err != nil {
@@ -61,7 +72,6 @@ func (c *ConnectionController) Connect(ctx *gin.Context) {
 		Message: "Client connected successfully",
 	})
 }
-
 
 func ValidateToken(token, clientID string) (*models.TokenValidateResponse, error) {
 	postBody, err := json.Marshal(map[string]string{"token": token, "client_id": clientID})
