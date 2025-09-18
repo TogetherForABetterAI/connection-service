@@ -7,21 +7,19 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/sirupsen/logrus"
 )
 
 type ConnectionController struct {
 	Service *service.ConnectionService
-	Logger  *logrus.Logger
 }
 
-func NewConnectionController(service *service.ConnectionService, logger *logrus.Logger) *ConnectionController {
+func NewConnectionController(service *service.ConnectionService) *ConnectionController {
 	return &ConnectionController{
 		Service: service,
-		Logger:  logger,
 	}
 }
 
@@ -34,7 +32,11 @@ func (c *ConnectionController) sendError(ctx *gin.Context, status int, title str
 		Instance: instance,
 	}
 	ctx.JSON(status, errorResp)
-	c.Logger.Error(title + ": " + detail)
+	slog.Error("API Error",
+		slog.String("title", title),
+		slog.String("detail", detail),
+		slog.Int("status", status),
+		slog.String("instance", instance))
 }
 
 // @Summary Connect authenticated client
