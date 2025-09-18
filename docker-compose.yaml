@@ -6,7 +6,7 @@ services:
     networks:
       - tpp-network
     ports:
-      - "${APP_PORT}:${APP_PORT}"
+      - "${PORT}:${PORT}"
     environment:
       - ENVIRONMENT=${ENVIRONMENT}
     volumes:
