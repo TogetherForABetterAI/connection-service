@@ -13,14 +13,14 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
-// @title           Auth Gateway API
+// @title           Connection Service API
 // @version         1.0
-// @description     API Gateway for authentication and authorization services
+// @description     Connection Service for managing user connections
 // @termsOfService  http://swagger.io/terms/
 
-// @contact.name   Auth Gateway Team
-// @contact.url    https://github.com/your-org/auth-gateway
-// @contact.email  auth-gateway@example.com
+// @contact.name   Connection Service Team
+// @contact.url    https://github.com/your-org/connection-service
+// @contact.email  connection-service@example.com
 
 // @license.name  Apache 2.0
 // @license.url   http://www.apache.org/licenses/LICENSE-2.0.html
@@ -55,7 +55,7 @@ func NewRouter(config config.GlobalConfig) *gin.Engine {
 	r := createRouterFromConfig(config)
 
 	// Initialize structured logger
-	slog.Info("Initializing Auth Gateway router")
+	slog.Info("Initializing Connection Service router")
 
 	// Initialize RabbitMQ publisher
 	publisher, err := rabbitmq.NewAMQPPublisherFromConfig(config)
@@ -80,7 +80,7 @@ func NewRouter(config config.GlobalConfig) *gin.Engine {
 	// Swagger documentation
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	slog.Info("Auth Gateway router initialized successfully")
+	slog.Info("Connection Service router initialized successfully")
 	return r
 }
 

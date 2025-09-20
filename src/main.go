@@ -18,13 +18,13 @@ import (
 	_ "github.com/swaggo/gin-swagger"
 )
 
-// @title Auth Gateway API
+// @title Connection Service API
 // @version 1.0
-// @description API Gateway for authentication and authorization
+// @description Connection Service for managing user connections
 
-// @contact.name   Auth Gateway Team
-// @contact.url    https://github.com/your-org/auth-gateway
-// @contact.email  auth-gateway@example.com
+// @contact.name   Connection Service Team
+// @contact.url    https://github.com/your-org/connection-service
+// @contact.email  connection-service@example.com
 
 func main() {
 	config := loadConfig()
