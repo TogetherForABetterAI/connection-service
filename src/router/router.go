@@ -1,10 +1,10 @@
 package router
 
 import (
-	"auth-gateway/src/config"
-	"auth-gateway/src/controller"
-	"auth-gateway/src/rabbitmq"
-	"auth-gateway/src/service"
+	"connection-service/src/config"
+	"connection-service/src/controller"
+	"connection-service/src/rabbitmq"
+	"connection-service/src/service"
 	"log"
 	"log/slog"
 

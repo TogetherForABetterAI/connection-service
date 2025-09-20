@@ -1,7 +1,7 @@
 package service
 
 import (
-	"auth-gateway/src/rabbitmq"
+	"connection-service/src/rabbitmq"
 	"encoding/json"
 	"fmt"
 )

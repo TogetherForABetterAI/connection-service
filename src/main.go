@@ -1,8 +1,8 @@
 package main
 
 import (
-	"auth-gateway/src/config"
-	"auth-gateway/src/router"
+	"connection-service/src/config"
+	"connection-service/src/router"
 	"context"
 	"fmt"
 	"log"
@@ -12,7 +12,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	_ "auth-gateway/src/docs"
+	_ "connection-service/src/docs"
 
 	_ "github.com/swaggo/files"
 	_ "github.com/swaggo/gin-swagger"

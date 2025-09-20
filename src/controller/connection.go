@@ -1,9 +1,9 @@
 package controller
 
 import (
-	"auth-gateway/src/models"
-	"auth-gateway/src/service"
 	"bytes"
+	"connection-service/src/models"
+	"connection-service/src/service"
 	"encoding/json"
 	"fmt"
 	"io"

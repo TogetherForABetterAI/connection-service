@@ -1,7 +1,7 @@
 package rabbitmq
 
 import (
-	"auth-gateway/src/config"
+	"connection-service/src/config"
 	"fmt"
 
 	"github.com/streadway/amqp"
