@@ -6,6 +6,10 @@ import (
 	"strconv"
 )
 
+const (
+	CONNECTION_EXCHANGE = "new_connections"
+)
+
 type GlobalConfig struct {
 	LogLevel                  string
 	RabbitHost                string
@@ -17,7 +21,6 @@ type GlobalConfig struct {
 	DataDispatcherServiceAddr string
 	Host                      string
 	Port                      string
-	AppPort                   string
 }
 
 func NewConfig() (GlobalConfig, error) {
