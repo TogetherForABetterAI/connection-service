@@ -53,19 +53,19 @@ func (c *ConnectionController) sendError(ctx *gin.Context, status int, title str
 func (c *ConnectionController) Connect(ctx *gin.Context) {
 	var reqBody models.ConnectRequest
 	if err := ctx.ShouldBindJSON(&reqBody); err != nil {
-		c.sendError(ctx, http.StatusBadRequest, "Bad Request", "Invalid JSON format: "+err.Error(), "https://auth-gateway.com/validation-error", "/connect")
+		c.sendError(ctx, http.StatusBadRequest, "Bad Request", "Invalid JSON format: "+err.Error(), "https://connection-service.com/validation-error", "/connect")
 		return
 	}
 
 	_, err := ValidateToken(reqBody.Token, reqBody.ClientId)
 	if err != nil {
-		c.sendError(ctx, http.StatusUnauthorized, "Unauthorized", "Token validation failed: "+err.Error(), "https://auth-gateway.com/validation-error", "/connect")
+		c.sendError(ctx, http.StatusUnauthorized, "Unauthorized", "Token validation failed: "+err.Error(), "https://connection-service.com/validation-error", "/connect")
 		return
 	}
 
 	err = c.Service.NotifyNewConnection(reqBody.ClientId, "-", "-")
 	if err != nil {
-		c.sendError(ctx, http.StatusInternalServerError, "Internal Error", err.Error(), "https://auth-gateway.com/internal-error", "/connect")
+		c.sendError(ctx, http.StatusInternalServerError, "Internal Error", err.Error(), "https://connection-service.com/internal-error", "/connect")
 		return
 	}
 
