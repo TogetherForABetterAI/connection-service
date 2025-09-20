@@ -72,3 +72,40 @@ func (p *AMQPPublisher) Close() {
 		p.conn.Close()
 	}
 }
+
+// DeclareExchange declares an exchange with the specified name and type.
+func (p *AMQPPublisher) DeclareExchange(name, exchangeType string) error {
+	return p.channel.ExchangeDeclare(
+		name,         // name
+		exchangeType, // type
+		true,         // durable
+		false,        // auto-deleted
+		false,        // internal
+		false,        // no-wait
+		nil,          // arguments
+	)
+}
+
+// DeclareQueue declares a queue with the specified name.
+func (p *AMQPPublisher) DeclareQueue(name string) error {
+	_, err := p.channel.QueueDeclare(
+		name,  // name
+		true,  // durable
+		false, // delete when unused
+		false, // exclusive
+		false, // no-wait
+		nil,   // arguments
+	)
+	return err
+}
+
+// BindQueue binds a queue to an exchange.
+func (p *AMQPPublisher) BindQueue(queueName, exchangeName string) error {
+	return p.channel.QueueBind(
+		queueName,    // queue name
+		"",           // routing key (empty for fanout)
+		exchangeName, // exchange
+		false,        // no-wait
+		nil,          // arguments
+	)
+}
