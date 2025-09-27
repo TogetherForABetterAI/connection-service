@@ -9,7 +9,7 @@ import (
 
 func main() {
 	logger.Init()
-	router := router.Router{logger.Logger}
+	router := router.Router{}
 	r, err_router := router.SetUpRouter()
 	if err_router != nil {
 		logger.Logger.Fatal("Error while setting up router: ", err_router.Error())

@@ -75,3 +75,14 @@ type UserInfo struct {
 type UserCreateResponse struct {
 	ClientId string `json:"client_id"`
 }
+
+type AdminAuth struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type AdminInfo struct {
+	Id        uuid.UUID `json:"id"`
+	Email     string    `json:"email"`
+	CreatedAt time.Time `json:"created_at"`
+}

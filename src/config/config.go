@@ -15,6 +15,8 @@ type GlobalConfig struct {
 	CalibrationServiceAddr    string
 	DataDispatcherServiceAddr string
 	AppPort                   string
+	SupabaseUrl               string
+	SupabaseKey               string
 }
 
 func InitializeConfig() GlobalConfig {
@@ -64,6 +66,9 @@ func InitializeConfig() GlobalConfig {
 		appPort = "8080"
 	}
 
+	supabase_url := os.Getenv("SUPABASE_URL")
+	supabase_key := os.Getenv("SUPABASE_KEY")
+
 	return GlobalConfig{
 		LogLevel:                  logLevel,
 		RabbitHost:                rabbitHost,
@@ -73,6 +78,8 @@ func InitializeConfig() GlobalConfig {
 		CalibrationServiceAddr:    calibrationAddr,
 		DataDispatcherServiceAddr: dataDispatcherAddr,
 		AppPort:                   appPort,
+		SupabaseUrl:               supabase_url,
+		SupabaseKey:               supabase_key,
 	}
 }
 

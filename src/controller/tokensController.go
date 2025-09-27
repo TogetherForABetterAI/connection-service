@@ -1,0 +1,69 @@
+package controller
+
+import (
+	"auth-gateway/src/models"
+	"auth-gateway/src/utils"
+	"bytes"
+	"encoding/json"
+	"io"
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+)
+
+type TokenController struct{}
+
+func NewTokenController() *TokenController {
+	return &TokenController{}
+}
+
+// @BasePath /
+
+// CreateToken godoc
+// @Summary create token
+// @Param client_id body string true "Client ID"
+// @Schemes
+// @Description create token
+// @Tags tokens
+// @Accept json
+// @Produce json
+// @Success 200 {object} models.TokenCreateResponse
+// @Failure 400 {object} models.APIError
+// @Failure 404 {object} models.APIError
+// @Failure 500 {object} models.APIError
+// @Router /tokens/create [post]
+
+func (c *TokenController) CreateToken(context *gin.Context) {
+	var reqBody models.TokenCreateRequest
+	err := context.ShouldBindJSON(&reqBody)
+
+	if err != nil {
+		utils.SendError(context, http.StatusBadRequest, "Bad Request", "Invalid JSON format: "+err.Error(), "https://auth-gateway.com/validation-error", "/tokens/create")
+		return
+	}
+
+	postBody, err := json.Marshal(map[string]string{"client_id": reqBody.ClientId})
+	if err != nil {
+		utils.SendError(context, http.StatusInternalServerError, "Internal Error", "Failed to marshal request body: "+err.Error(), "https://auth-gateway.com/internal-error", "/tokens/create")
+		return
+	}
+
+	resp, err := http.Post("http://authenticator-service-app:8000/tokens/create", "application/json", bytes.NewBuffer(postBody))
+	if err != nil {
+		utils.SendError(context, http.StatusInternalServerError, "Internal Error", "Failed to send request: "+err.Error(), "https://auth-gateway.com/internal-error", "/tokens/create")
+		return
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		utils.SendError(context, http.StatusInternalServerError, "Internal Error", "Failed to read response body: "+err.Error(), "https://auth-gateway.com/internal-error", "/tokens/create")
+		return
+	}
+	var tokenCreateResp models.TokenCreateResponse
+	if err := json.Unmarshal(body, &tokenCreateResp); err != nil {
+		utils.SendError(context, http.StatusInternalServerError, "Internal Error", "Failed to unmarshal response body: "+err.Error(), "https://auth-gateway.com/internal-error", "/tokens/create")
+		return
+	}
+
+	context.JSON(resp.StatusCode, tokenCreateResp)
+}
