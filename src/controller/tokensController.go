@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"auth-gateway/logger"
 	"auth-gateway/src/models"
 	"auth-gateway/src/utils"
 	"bytes"
@@ -42,7 +43,7 @@ func (c *TokenController) CreateToken(context *gin.Context) {
 		return
 	}
 
-	postBody, err := json.Marshal(map[string]string{"client_id": reqBody.ClientId})
+	postBody, err := json.Marshal(map[string]string{"user_id": reqBody.UserId})
 	if err != nil {
 		utils.SendError(context, http.StatusInternalServerError, "Internal Error", "Failed to marshal request body: "+err.Error(), "https://auth-gateway.com/internal-error", "/tokens/create")
 		return
@@ -66,4 +67,26 @@ func (c *TokenController) CreateToken(context *gin.Context) {
 	}
 
 	context.JSON(resp.StatusCode, tokenCreateResp)
+}
+
+func (c *TokenController) GetTokens(context *gin.Context) {
+	resp, err := http.Get("http://authenticator-service-app:8000/tokens/")
+	if err != nil {
+		utils.SendError(context, http.StatusInternalServerError, "Internal Error", "Failed to send request: "+err.Error(), "https://auth-gateway.com/internal-error", "/tokens/")
+		return
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		utils.SendError(context, http.StatusInternalServerError, "Internal Error", "Failed to read response body: "+err.Error(), "https://auth-gateway.com/internal-error", "/tokens/")
+		return
+	}
+	var tokens []models.TokenInfo
+	if err := json.Unmarshal(body, &tokens); err != nil {
+		utils.SendError(context, http.StatusInternalServerError, "Internal Error", "Failed to unmarshal response body: "+err.Error(), "https://auth-gateway.com/internal-error", "/tokens/")
+		return
+	}
+	logger.Logger.Infof("Tokens retrieved successfully: %+v", tokens)
+
+	context.JSON(resp.StatusCode, tokens)
 }

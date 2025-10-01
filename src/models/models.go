@@ -17,8 +17,8 @@ type APIError struct {
 
 // ConnectRequest represents the body of a request to create a snap.
 type ConnectRequest struct {
-	ClientId string `json:"client_id"`
-	Token    string `json:"token"`
+	UserId string `json:"user_id"`
+	Token  string `json:"token"`
 }
 
 type ConnectResponse struct {
@@ -46,12 +46,23 @@ type TokenValidateResponse struct {
 }
 
 type TokenCreateRequest struct {
-	ClientId string `json:"client_id"`
+	UserId string `json:"user_id"`
 }
 
 type TokenCreateResponse struct {
 	Token     string    `json:"token"`
 	ExpiresAt time.Time `json:"expires_at"`
+}
+
+type TokenInfo struct {
+	Id         uuid.UUID `json:"id"`
+	UserId     string    `json:"user_id"`
+	Token      string    `json:"token_hash"`
+	CreatedAt  time.Time `json:"created_at"`
+	ExpiresAt  time.Time `json:"expires_at"`
+	UsageCount int       `json:"usage_count"`
+	MaxUses    int       `json:"max_uses"`
+	IsActive   bool      `json:"is_active"`
 }
 
 type UserCreateRequest struct {
@@ -63,7 +74,7 @@ type UserCreateRequest struct {
 }
 
 type UserInfo struct {
-	ClientId      string    `json:"client_id"`
+	UserID        string    `json:"user_id"`
 	Username      string    `json:"username"`
 	Email         string    `json:"email"`
 	ModelType     string    `json:"model_type"`
@@ -73,7 +84,7 @@ type UserInfo struct {
 }
 
 type UserCreateResponse struct {
-	ClientId string `json:"client_id"`
+	Id string `json:"id"`
 }
 
 type AdminAuth struct {

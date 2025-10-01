@@ -197,7 +197,7 @@ func (c *UserController) Connect(context *gin.Context) {
 	var reqBody models.ConnectRequest
 	err := context.ShouldBindJSON(&reqBody)
 
-	logger.Logger.Infof("Client %s requested to connect", reqBody.ClientId)
+	logger.Logger.Infof("User %s requested to connect", reqBody.UserId)
 
 	if err != nil {
 		utils.SendError(context, http.StatusBadRequest, "Bad Request", "Invalid JSON format: "+err.Error(), "https://auth-gateway.com/validation-error", "/connect")
@@ -205,7 +205,7 @@ func (c *UserController) Connect(context *gin.Context) {
 	}
 
 	newClientRequest := &pb.NewClientRequest{
-		ClientId:      reqBody.ClientId,
+		ClientId:      reqBody.UserId,
 		InputsFormat:  "-",
 		OutputsFormat: "-",
 	}
@@ -221,11 +221,11 @@ func (c *UserController) Connect(context *gin.Context) {
 		return
 	}
 
-	logger.Logger.Infof("Client %s connected successfully", reqBody.ClientId)
+	logger.Logger.Infof("User %s connected successfully", reqBody.UserId)
 
 	successResponse := models.ConnectResponse{
 		Status:  "success",
-		Message: "Client connected successfully",
+		Message: "User connected successfully",
 	}
 
 	context.JSON(http.StatusOK, successResponse)

@@ -63,7 +63,8 @@ func (r Router) SetUpRouter() (*gin.Engine, error) {
 	tokens_group := router.Group("/tokens")
 	tokens_group.Use(AdminAuthRequiredMiddleware())
 	{
-		tokens_group.POST("/create", tokensCtrl.CreateToken)
+		tokens_group.POST("/create", AdminAuthRequiredMiddleware(), tokensCtrl.CreateToken)
+		tokens_group.GET("/", AdminAuthRequiredMiddleware(), tokensCtrl.GetTokens)
 	}
 	users_group := router.Group("/users")
 	{
