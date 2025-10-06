@@ -67,10 +67,19 @@ func (c *Controller) Connect(context *gin.Context) {
 		return
 	}
 
+	// Fetch user info to get model_type and formats
+	userInfo, err := GetUserInfo(reqBody.ClientId)
+	if err != nil {
+		c.sendError(context, http.StatusInternalServerError, "Internal Error", "Failed to fetch user information: "+err.Error(), "https://auth-gateway.com/internal-error", "/connect")
+		return
+	}
+
 	newClientRequest := &pb.NewClientRequest{
 		ClientId:      reqBody.ClientId,
-		InputsFormat:  "-",
-		OutputsFormat: "-",
+		RoutingKey:    reqBody.ClientId, // Use client_id as routing key
+		InputsFormat:  userInfo.InputsFormat,
+		OutputsFormat: userInfo.OutputsFormat,
+		ModelType:     userInfo.ModelType,
 	}
 	err = NotifyNewClient(config.Config.DataDispatcherServiceAddr, newClientRequest)
 	if err != nil {
@@ -124,7 +133,7 @@ func (c *Controller) CreateToken(context *gin.Context) {
 		return
 	}
 
-	resp, err := http.Post("http://authenticator-service-app:8000/tokens/create", "application/json", bytes.NewBuffer(postBody))
+	resp, err := http.Post("http://users-service-app:8000/tokens/create", "application/json", bytes.NewBuffer(postBody))
 	if err != nil {
 		c.sendError(context, http.StatusInternalServerError, "Internal Error", "Failed to send request: "+err.Error(), "https://auth-gateway.com/internal-error", "/tokens/create")
 		return
@@ -179,7 +188,7 @@ func (c *Controller) CreateUser(context *gin.Context) {
 		return
 	}
 
-	resp, err := http.Post("http://authenticator-service-app:8000/users/create", "application/json", bytes.NewBuffer(postBody))
+	resp, err := http.Post("http://users-service-app:8000/users/create", "application/json", bytes.NewBuffer(postBody))
 	if err != nil {
 		c.sendError(context, http.StatusInternalServerError, "Internal Error", "Failed to send request: "+err.Error(), "https://auth-gateway.com/internal-error", "/tokens/create")
 		return
@@ -211,7 +220,7 @@ func (c *Controller) CreateUser(context *gin.Context) {
 // @Failure 500 {object} models.APIError
 // @Router /users/ [get]
 func (c *Controller) GetUsers(context *gin.Context) {
-	resp, err := http.Get("http://authenticator-service-app:8000/users/")
+	resp, err := http.Get("http://users-service-app:8000/users/")
 	if err != nil {
 		c.sendError(context, http.StatusInternalServerError, "Internal Error", "Failed to send request: "+err.Error(), "https://auth-gateway.com/internal-error", "/users/")
 		return
@@ -246,7 +255,7 @@ func (c *Controller) GetUsers(context *gin.Context) {
 // @Router /users/{id} [get]
 func (c *Controller) GetUserByID(context *gin.Context) {
 	userID := context.Param("id")
-	resp, err := http.Get("http://authenticator-service-app:8000/users/" + userID)
+	resp, err := http.Get("http://users-service-app:8000/users/" + userID)
 	if err != nil {
 		c.sendError(context, http.StatusInternalServerError, "Internal Error", "Failed to send request: "+err.Error(), "https://auth-gateway.com/internal-error", "/users/"+userID)
 		return
@@ -301,7 +310,7 @@ func ValidateToken(token, clientID string) (*models.TokenValidateResponse, error
 		return nil, fmt.Errorf("failed to validate token")
 	}
 
-	resp, err := http.Post("http://authenticator-service-app:8000/tokens/validate", "application/json", bytes.NewBuffer(postBody))
+	resp, err := http.Post("http://users-service-app:8000/tokens/validate", "application/json", bytes.NewBuffer(postBody))
 	if err != nil || resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("failed to validate token")
 	}
@@ -322,4 +331,28 @@ func ValidateToken(token, clientID string) (*models.TokenValidateResponse, error
 	}
 
 	return &tokenResp, nil
+}
+
+func GetUserInfo(clientID string) (*models.UserInfo, error) {
+	resp, err := http.Get("http://users-service-app:8000/users/" + clientID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch user info: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("user not found or server error (status: %d)", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	var userInfo models.UserInfo
+	if err := json.Unmarshal(body, &userInfo); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal user info: %w", err)
+	}
+
+	return &userInfo, nil
 }
