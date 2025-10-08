@@ -75,8 +75,7 @@ func (c *Controller) Connect(context *gin.Context) {
 	}
 
 	newClientRequest := &pb.NewClientRequest{
-		ClientId:      reqBody.ClientId,
-		RoutingKey:    reqBody.ClientId, // Use client_id as routing key
+		ClientId:      reqBody.ClientId, // Also used as routing key
 		InputsFormat:  userInfo.InputsFormat,
 		OutputsFormat: userInfo.OutputsFormat,
 		ModelType:     userInfo.ModelType,
