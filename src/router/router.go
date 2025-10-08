@@ -61,7 +61,6 @@ func (r Router) SetUpRouter() (*gin.Engine, error) {
 	docs.SwaggerInfo.BasePath = "/"
 
 	tokens_group := router.Group("/tokens")
-	tokens_group.Use(AdminAuthRequiredMiddleware())
 	{
 		tokens_group.POST("/create", AdminAuthRequiredMiddleware(), tokensCtrl.CreateToken)
 		tokens_group.GET("/", AdminAuthRequiredMiddleware(), tokensCtrl.GetTokens)

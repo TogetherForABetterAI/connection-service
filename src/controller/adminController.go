@@ -18,6 +18,19 @@ func NewAdminController() *AdminController {
 	return &AdminController{}
 }
 
+// @BasePath /
+// InviteAdmin godoc
+// @Summary invite admin
+// @Param email body string true "Admin Email"
+// @Schemes
+// @Description invite admin
+// @Tags admins
+// @Accept json
+// @Produce json
+// @Success 200
+// @Failure 400 {object} models.APIError
+// @Failure 500 {object} models.APIError
+// @Router /admins/invite [post]
 func (c *AdminController) InviteAdmin(context *gin.Context) {
 	var reqBody struct {
 		Email string `json:"email"`
@@ -52,6 +65,19 @@ func (c *AdminController) InviteAdmin(context *gin.Context) {
 	context.Data(resp.StatusCode, "application/json", body)
 }
 
+// @BasePath /
+// SignUpAdmin godoc
+// @Summary sign up admin
+// @Param AdminAuth body models.AdminAuth true "Admin Auth"
+// @Schemes
+// @Description sign up admin
+// @Tags admins
+// @Accept json
+// @Produce json
+// @Success 200
+// @Failure 400 {object} models.APIError
+// @Failure 500 {object} models.APIError
+// @Router /admins/signup [post]
 func (c *AdminController) Signup(context *gin.Context) {
 	var reqBody models.AdminAuth
 	err := context.ShouldBindJSON(&reqBody)
@@ -86,6 +112,19 @@ func (c *AdminController) Signup(context *gin.Context) {
 	context.Data(resp.StatusCode, "application/json", body)
 }
 
+// @BasePath /
+// LoginAdmin godoc
+// @Summary login admin
+// @Param AdminAuth body models.AdminAuth true "Admin Auth"
+// @Schemes
+// @Description login admin
+// @Tags admins
+// @Accept json
+// @Produce json
+// @Success 200 {object} models.LoginResponse
+// @Failure 400 {object} models.APIError
+// @Failure 500 {object} models.APIError
+// @Router /admins/login [post]
 func (c *AdminController) Login(context *gin.Context) {
 	var reqBody models.AdminAuth
 	err := context.ShouldBindJSON(&reqBody)
@@ -115,24 +154,31 @@ func (c *AdminController) Login(context *gin.Context) {
 		utils.SendError(context, http.StatusInternalServerError, "Internal Error", "Failed to read response body: "+err.Error(), "https://auth-gateway.com/internal-error", "/tokens/create")
 		return
 	}
+	var loginResponse models.LoginResponse
 
-	var respBody struct {
-		AccessToken  string `json:"access_token"`
-		RefreshToken string `json:"refresh_token"`
-		ExpiresIn    int    `json:"expires_in"`
-	}
-
-	if err := json.Unmarshal(body, &respBody); err != nil {
+	if err := json.Unmarshal(body, &loginResponse); err != nil {
 		utils.SendError(context, http.StatusInternalServerError, "Internal Error", "Failed to unmarshal response body: "+err.Error(), "https://auth-gateway.com/internal-error", "/tokens/create")
 		return
 	}
-	context.JSON(resp.StatusCode, respBody)
+	context.JSON(resp.StatusCode, loginResponse)
 }
 
 func (c *AdminController) GetAdmin(context *gin.Context) {
 
 }
 
+// @BasePath /
+// GetAdmins godoc
+// @Summary get admins
+// @Schemes
+// @Description get admins
+// @Tags admins
+// @Accept json
+// @Produce json
+// @Success 200 {array} models.AdminInfo
+// @Failure 400 {object} models.APIError
+// @Failure 500 {object} models.APIError
+// @Router /admins/ [get]
 func (c *AdminController) ListAdmins(context *gin.Context) {
 	var admins []models.AdminInfo
 

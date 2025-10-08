@@ -12,11 +12,27 @@ definitions:
       type:
         type: string
     type: object
+  models.AdminAuth:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    type: object
+  models.AdminInfo:
+    properties:
+      created_at:
+        type: string
+      email:
+        type: string
+      id:
+        type: string
+    type: object
   models.ConnectRequest:
     properties:
-      client_id:
-        type: string
       token:
+        type: string
+      user_id:
         type: string
     type: object
   models.ConnectResponse:
@@ -26,11 +42,39 @@ definitions:
       status:
         type: string
     type: object
+  models.LoginResponse:
+    properties:
+      access_token:
+        type: string
+      expires_in:
+        type: integer
+      refresh_token:
+        type: string
+    type: object
   models.TokenCreateResponse:
     properties:
       expires_at:
         type: string
       token:
+        type: string
+    type: object
+  models.TokenInfo:
+    properties:
+      created_at:
+        type: string
+      expires_at:
+        type: string
+      id:
+        type: string
+      is_active:
+        type: boolean
+      max_uses:
+        type: integer
+      token_hash:
+        type: string
+      usage_count:
+        type: integer
+      user_id:
         type: string
     type: object
   models.UserCreateRequest:
@@ -48,13 +92,11 @@ definitions:
     type: object
   models.UserCreateResponse:
     properties:
-      client_id:
+      id:
         type: string
     type: object
   models.UserInfo:
     properties:
-      client_id:
-        type: string
       created_at:
         type: string
       email:
@@ -65,12 +107,150 @@ definitions:
         type: string
       outputs_format:
         type: string
+      user_id:
+        type: string
       username:
         type: string
     type: object
 info:
   contact: {}
 paths:
+  /admins/:
+    get:
+      consumes:
+      - application/json
+      description: get admins
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.AdminInfo'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.APIError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.APIError'
+      summary: get admins
+      tags:
+      - admins
+  /admins/invite:
+    post:
+      consumes:
+      - application/json
+      description: invite admin
+      parameters:
+      - description: Admin Email
+        in: body
+        name: email
+        required: true
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.APIError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.APIError'
+      summary: invite admin
+      tags:
+      - admins
+  /admins/login:
+    post:
+      consumes:
+      - application/json
+      description: login admin
+      parameters:
+      - description: Admin Auth
+        in: body
+        name: AdminAuth
+        required: true
+        schema:
+          $ref: '#/definitions/models.AdminAuth'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.LoginResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.APIError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.APIError'
+      summary: login admin
+      tags:
+      - admins
+  /admins/signup:
+    post:
+      consumes:
+      - application/json
+      description: sign up admin
+      parameters:
+      - description: Admin Auth
+        in: body
+        name: AdminAuth
+        required: true
+        schema:
+          $ref: '#/definitions/models.AdminAuth'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.APIError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.APIError'
+      summary: sign up admin
+      tags:
+      - admins
+  /tokens/:
+    get:
+      consumes:
+      - application/json
+      description: get tokens
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.TokenInfo'
+            type: array
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.APIError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.APIError'
+      summary: get tokens
+      tags:
+      - tokens
   /tokens/create:
     post:
       consumes:

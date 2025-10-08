@@ -26,7 +26,6 @@ func NewUserController() *UserController {
 }
 
 // @BasePath /
-
 // @Summary create user
 // @Param CreateUserRequest body models.UserCreateRequest true "User Create Request"
 // @Schemes

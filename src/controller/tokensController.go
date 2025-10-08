@@ -19,7 +19,6 @@ func NewTokenController() *TokenController {
 }
 
 // @BasePath /
-
 // CreateToken godoc
 // @Summary create token
 // @Param client_id body string true "Client ID"
@@ -33,7 +32,6 @@ func NewTokenController() *TokenController {
 // @Failure 404 {object} models.APIError
 // @Failure 500 {object} models.APIError
 // @Router /tokens/create [post]
-
 func (c *TokenController) CreateToken(context *gin.Context) {
 	var reqBody models.TokenCreateRequest
 	err := context.ShouldBindJSON(&reqBody)
@@ -69,6 +67,18 @@ func (c *TokenController) CreateToken(context *gin.Context) {
 	context.JSON(resp.StatusCode, tokenCreateResp)
 }
 
+// @BasePath /
+// GetTokens godoc
+// @Summary get tokens
+// @Schemes
+// @Description get tokens
+// @Tags tokens
+// @Accept json
+// @Produce json
+// @Success 200 {array} models.TokenInfo
+// @Failure 404 {object} models.APIError
+// @Failure 500 {object} models.APIError
+// @Router /tokens/ [get]
 func (c *TokenController) GetTokens(context *gin.Context) {
 	resp, err := http.Get("http://authenticator-service-app:8000/tokens/")
 	if err != nil {
