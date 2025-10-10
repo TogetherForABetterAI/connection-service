@@ -7,7 +7,9 @@ import (
 )
 
 const (
-	CONNECTION_EXCHANGE = "new_connections"
+	CONNECTION_EXCHANGE            = "new_connections"
+	DATA_DISPATCHER_CONNECTION     = "data-dispatcher-connections"
+	CALIBRATION_SERVICE_CONNECTION = "calibration-service-connections"
 )
 
 type GlobalConfig struct {
