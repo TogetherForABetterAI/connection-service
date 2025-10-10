@@ -58,13 +58,13 @@ func NewRouter(config config.GlobalConfig) *gin.Engine {
 	slog.Info("Initializing Connection Service router")
 
 	// Initialize RabbitMQ middleware
-	middlewareInstance, err := middleware.NewMiddleware(config)
+	middleware, err := middleware.NewMiddleware(config)
 	if err != nil {
 		log.Fatalf("Failed to create RabbitMQ middleware: %v", err)
 	}
 
 	// Initialize services
-	connectionService := service.NewConnectionService(middlewareInstance)
+	connectionService := service.NewConnectionService(middleware)
 
 	// Initialize controllers (no logger dependency needed)
 	connectionController := controller.NewConnectionController(connectionService)
