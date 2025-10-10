@@ -63,7 +63,14 @@ func (c *ConnectionController) Connect(ctx *gin.Context) {
 		return
 	}
 
-	err = c.Service.NotifyNewConnection(reqBody.ClientId, "-", "-", reqBody.model_type)
+	// Get user data from users-service
+	userData, err := c.getUserData(reqBody.ClientId)
+	if err != nil {
+		c.sendError(ctx, http.StatusInternalServerError, "Internal Error", "Failed to get user data: "+err.Error(), "https://connection-service.com/internal-error", "/connect")
+		return
+	}
+
+	err = c.Service.NotifyNewConnection(userData.ClientId, userData.InputsFormat, userData.OutputsFormat, userData.ModelType)
 	if err != nil {
 		c.sendError(ctx, http.StatusInternalServerError, "Internal Error", err.Error(), "https://connection-service.com/internal-error", "/connect")
 		return
@@ -82,7 +89,7 @@ func ValidateToken(token, clientID string) (*models.TokenValidateResponse, error
 		return nil, fmt.Errorf("failed to validate token")
 	}
 
-	resp, err := http.Post("http://authenticator-service-app:8000/tokens/validate", "application/json", bytes.NewBuffer(postBody))
+	resp, err := http.Post("http://users-service:8000/tokens/validate", "application/json", bytes.NewBuffer(postBody))
 	if err != nil || resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("failed to validate token")
 	}
@@ -103,4 +110,31 @@ func ValidateToken(token, clientID string) (*models.TokenValidateResponse, error
 	}
 
 	return &tokenResp, nil
+}
+
+// getUserData fetches user data from users-service
+func (c *ConnectionController) getUserData(clientId string) (*models.GetUserDataResponse, error) {
+	url := fmt.Sprintf("http://users-service:8000/%s", clientId)
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("failed to make request to users-service: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("users-service returned status code: %d", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	var userData models.GetUserDataResponse
+	if err := json.Unmarshal(body, &userData); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal user data: %w", err)
+	}
+
+	return &userData, nil
 }
