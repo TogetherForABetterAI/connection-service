@@ -63,7 +63,7 @@ func (c *ConnectionController) Connect(ctx *gin.Context) {
 		return
 	}
 
-	err = c.Service.NotifyNewConnection(reqBody.ClientId, "-", "-")
+	err = c.Service.NotifyNewConnection(reqBody.ClientId, "-", "-", reqBody.model_type)
 	if err != nil {
 		c.sendError(ctx, http.StatusInternalServerError, "Internal Error", err.Error(), "https://connection-service.com/internal-error", "/connect")
 		return

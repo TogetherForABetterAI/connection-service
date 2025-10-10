@@ -1,34 +1,34 @@
 package service
 
 import (
-	"connection-service/src/rabbitmq"
+	"connection-service/src/config"
+	"connection-service/src/middleware"
+	"connection-service/src/models"
 	"encoding/json"
 	"fmt"
 )
 
 type ConnectionService struct {
-	Publisher rabbitmq.Publisher
+	Publisher middleware.Publisher
 }
 
-func NewConnectionService(publisher rabbitmq.Publisher) *ConnectionService {
+func NewConnectionService(publisher middleware.Publisher) *ConnectionService {
 	return &ConnectionService{Publisher: publisher}
 }
 
-type ConnectNotification struct {
-	ClientId      string `json:"client_id"`
-	InputsFormat  string `json:"inputs_format"`
-	OutputsFormat string `json:"outputs_format"`
-}
+func (s *ConnectionService) NotifyNewConnection(clientId, inputsFormat, outputsFormat, modelType string) error {
 
-func (s *ConnectionService) NotifyNewConnection(clientId, inputsFormat, outputsFormat string) error {
-	notification := ConnectNotification{
+	exchangeName := config.CONNECTION_EXCHANGE
+
+	notification := models.ConnectNotification{
 		ClientId:      clientId,
 		InputsFormat:  inputsFormat,
 		OutputsFormat: outputsFormat,
+		ModelType:     modelType,
 	}
 	body, err := json.Marshal(notification)
 	if err != nil {
 		return fmt.Errorf("failed to marshal notification: %w", err)
 	}
-	return s.Publisher.Publish("new_connections", body)
+	return s.Publisher.Publish(exchangeName, body)
 }
