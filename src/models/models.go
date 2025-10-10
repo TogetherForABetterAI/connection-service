@@ -46,7 +46,7 @@ type TokenValidateResponse struct {
 }
 
 type TokenCreateRequest struct {
-	UserId string `json:"user_id"`
+	Username string `json:"username"`
 }
 
 type TokenCreateResponse struct {
@@ -57,6 +57,7 @@ type TokenCreateResponse struct {
 type TokenInfo struct {
 	Id         uuid.UUID `json:"id"`
 	UserId     string    `json:"user_id"`
+	Username   string    `json:"username"`
 	Token      string    `json:"token_hash"`
 	CreatedAt  time.Time `json:"created_at"`
 	ExpiresAt  time.Time `json:"expires_at"`
