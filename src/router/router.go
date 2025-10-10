@@ -3,7 +3,7 @@ package router
 import (
 	"connection-service/src/config"
 	"connection-service/src/controller"
-	"connection-service/src/rabbitmq"
+	"connection-service/src/middleware"
 	"connection-service/src/service"
 	"log"
 	"log/slog"
@@ -57,19 +57,14 @@ func NewRouter(config config.GlobalConfig) *gin.Engine {
 	// Initialize structured logger
 	slog.Info("Initializing Connection Service router")
 
-	// Initialize RabbitMQ publisher
-	publisher, err := rabbitmq.NewAMQPPublisherFromConfig(config)
+	// Initialize RabbitMQ middleware
+	middlewareInstance, err := middleware.NewMiddleware(config)
 	if err != nil {
-		log.Fatalf("Failed to create RabbitMQ publisher: %v", err)
-	}
-
-	// Setup RabbitMQ queues and bindings
-	if err := setupConnectionQueues(publisher); err != nil {
-		log.Fatalf("Failed to setup RabbitMQ queues: %v", err)
+		log.Fatalf("Failed to create RabbitMQ middleware: %v", err)
 	}
 
 	// Initialize services
-	connectionService := service.NewConnectionService(publisher)
+	connectionService := service.NewConnectionService(middlewareInstance)
 
 	// Initialize controllers (no logger dependency needed)
 	connectionController := controller.NewConnectionController(connectionService)
@@ -89,34 +84,4 @@ func InitializeRoutes(
 	connectionController *controller.ConnectionController,
 ) {
 	InitializeUserRoutes(r, connectionController)
-}
-
-func setupConnectionQueues(publisher *rabbitmq.AMQPPublisher) error {
-	exchangeName := config.CONNECTION_EXCHANGE
-	queues := []string{
-		"data-dispatcher-connections",
-		"calibration-service-connections",
-	}
-
-	slog.Info("Setting up RabbitMQ queues and bindings", "exchange", exchangeName, "queues", queues)
-
-	// Declare the exchange (fanout type for broadcasting)
-	if err := publisher.DeclareExchange(exchangeName, "fanout"); err != nil {
-		return err
-	}
-
-	// Declare queues and bind them to the exchange
-	for _, queueName := range queues {
-		if err := publisher.DeclareQueue(queueName); err != nil {
-			return err
-		}
-
-		if err := publisher.BindQueue(queueName, exchangeName); err != nil {
-			return err
-		}
-
-		slog.Info("Queue created and bound to exchange", "queue", queueName, "exchange", exchangeName)
-	}
-
-	return nil
 }
