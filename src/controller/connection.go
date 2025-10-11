@@ -114,7 +114,7 @@ func ValidateToken(token, clientID string) (*models.TokenValidateResponse, error
 
 // getUserData fetches user data from users-service
 func (c *ConnectionController) getUserData(clientId string) (*models.GetUserDataResponse, error) {
-	url := fmt.Sprintf("http://users-service:8000/%s", clientId)
+	url := fmt.Sprintf("http://users-service:8000/users/%s", clientId)
 
 	resp, err := http.Get(url)
 	if err != nil {
