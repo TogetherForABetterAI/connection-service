@@ -67,27 +67,27 @@ func NewMiddleware(config config.GlobalConfig) (*Middleware, error) {
 	return middleware, nil
 }
 
-func (m *Middleware) DeclareQueue(queueName string) error {
+func (m *Middleware) DeclareQueue(queueName string, durable bool) error {
 	_, err := m.channel.QueueDeclare(
 		queueName, // name
-		true,      // durable
+		durable,   // durable
 		false,     // delete when unused
-		false,      // exclusive
+		false,     // exclusive
 		false,     // no-wait
 		nil,       // arguments
 	)
 	return err
 }
 
-func (m *Middleware) DeclareExchange(exchangeName string, exchangeType string) error {
+func (m *Middleware) DeclareExchange(exchangeName string, exchangeType string, durable bool) error {
 	return m.channel.ExchangeDeclare(
 		exchangeName,
 		exchangeType,
-		true,  // durable
-		false, // autoDelete
-		false, // internal
-		false, // noWait
-		nil,   // arguments
+		durable, // durable
+		false,   // autoDelete
+		false,   // internal
+		false,   // noWait
+		nil,     // arguments
 	)
 }
 
@@ -190,13 +190,13 @@ func (m *Middleware) setupConnectionQueues() error {
 	slog.Info("Setting up RabbitMQ queues and bindings", "exchange", exchangeName, "queues", queues)
 
 	// Declare the exchange (fanout type for broadcasting)
-	if err := m.DeclareExchange(exchangeName, "fanout"); err != nil {
+	if err := m.DeclareExchange(exchangeName, "fanout", false); err != nil {
 		return err
 	}
 
 	// Declare queues and bind them to the exchange
 	for _, queueName := range queues {
-		if err := m.DeclareQueue(queueName); err != nil {
+		if err := m.DeclareQueue(queueName, false); err != nil {
 			return err
 		}
 
