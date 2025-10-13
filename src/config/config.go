@@ -8,8 +8,8 @@ import (
 
 const (
 	CONNECTION_EXCHANGE            = "new_connections"
-	DATA_DISPATCHER_CONNECTION     = "data-dispatcher-connections"
-	CALIBRATION_SERVICE_CONNECTION = "calibration-service-connections"
+	DATA_DISPATCHER_CONNECTION     = "data_dispatcher_connections_queue"
+	CALIBRATION_SERVICE_CONNECTION = "calibration_service_connections_queue"
 )
 
 type GlobalConfig struct {
