@@ -68,17 +68,13 @@ func (c *Controller) Connect(context *gin.Context) {
 	}
 
 	// Fetch user info to get model_type and formats
-	userInfo, err := GetUserInfo(reqBody.ClientId)
-	if err != nil {
-		c.sendError(context, http.StatusInternalServerError, "Internal Error", "Failed to fetch user info: "+err.Error(), "https://auth-gateway.com/internal-error", "/connect")
-		return
-	}
+	userInfo := c.GetUserByID(context)
 
 	newClientRequest := &pb.NewClientRequest{
 		ClientId:      reqBody.ClientId,
-		ModelType:     userInfo.ModelType,
 		InputsFormat:  userInfo.InputsFormat,
 		OutputsFormat: userInfo.OutputsFormat,
+		ModelType:     userInfo.ModelType,
 	}
 	err = NotifyNewClient(config.Config.DataDispatcherServiceAddr, newClientRequest)
 	if err != nil {
@@ -252,32 +248,34 @@ func (c *Controller) GetUsers(context *gin.Context) {
 // @Failure 404 {object} models.APIError
 // @Failure 500 {object} models.APIError
 // @Router /users/{id} [get]
-func (c *Controller) GetUserByID(context *gin.Context) {
+func (c *Controller) GetUserByID(context *gin.Context) models.UserInfo {
 	userID := context.Param("id")
 	resp, err := http.Get("http://users-service-app:8000/users/" + userID)
 	if err != nil {
 		c.sendError(context, http.StatusInternalServerError, "Internal Error", "Failed to send request: "+err.Error(), "https://auth-gateway.com/internal-error", "/users/"+userID)
-		return
+		return models.UserInfo{}
 	}
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		c.sendError(context, http.StatusInternalServerError, "Internal Error", "Failed to read response body: "+err.Error(), "https://auth-gateway.com/internal-error", "/users/"+userID)
-		return
+		return models.UserInfo{}
 	}
 
 	if resp.StatusCode == http.StatusNotFound {
 		c.sendError(context, http.StatusNotFound, "Not Found", "User not found", "https://auth-gateway.com/not-found", "/users/"+userID)
-		return
+		return models.UserInfo{}
 	}
 
 	var userResp models.UserInfo
 	if err := json.Unmarshal(body, &userResp); err != nil {
 		c.sendError(context, http.StatusInternalServerError, "Internal Error", "Failed to unmarshal response body: "+err.Error(), "https://auth-gateway.com/internal-error", "/users/"+userID)
-		return
+		return models.UserInfo{}
 	}
 
 	context.JSON(resp.StatusCode, userResp)
+
+	return userResp
 }
 
 func (c *Controller) TestWebhook(context *gin.Context) {
