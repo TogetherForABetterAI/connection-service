@@ -71,7 +71,7 @@ func (c *Controller) Connect(context *gin.Context) {
 	userInfo := c.GetUserByID(context)
 
 	newClientRequest := &pb.NewClientRequest{
-		ClientId:      reqBody.ClientId, // Also used as routing key
+		ClientId:      reqBody.ClientId,
 		InputsFormat:  userInfo.InputsFormat,
 		OutputsFormat: userInfo.OutputsFormat,
 		ModelType:     userInfo.ModelType,
@@ -298,6 +298,30 @@ func NotifyNewClient(serviceAddr string, newClientRequest *pb.NewClientRequest) 
 		return err
 	}
 	return nil
+}
+
+func GetUserInfo(clientID string) (*models.UserInfo, error) {
+	resp, err := http.Get("http://users-service-app:8000/users/" + clientID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch user info: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("user not found or error fetching user info, status: %d", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	var userInfo models.UserInfo
+	if err := json.Unmarshal(body, &userInfo); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal user info: %w", err)
+	}
+
+	return &userInfo, nil
 }
 
 func ValidateToken(token, clientID string) (*models.TokenValidateResponse, error) {
