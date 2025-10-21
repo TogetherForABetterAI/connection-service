@@ -1,8 +1,15 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"strconv"
+)
+
+const (
+	CONNECTION_EXCHANGE            = "new_connections"
+	DATA_DISPATCHER_CONNECTION     = "data_dispatcher_connections_queue"
+	CALIBRATION_SERVICE_CONNECTION = "calibration_service_connections_queue"
 )
 
 type GlobalConfig struct {
@@ -14,70 +21,73 @@ type GlobalConfig struct {
 	DatasetAddr               string
 	CalibrationServiceAddr    string
 	DataDispatcherServiceAddr string
-	AppPort                   string
+	Host                      string
+	Port                      string
 }
 
-func InitializeConfig() GlobalConfig {
+func NewConfig() (GlobalConfig, error) {
 	// Get RabbitMQ connection details from environment
 	rabbitHost := os.Getenv("RABBITMQ_HOST")
 	if rabbitHost == "" {
-		rabbitHost = "localhost"
+		return GlobalConfig{}, fmt.Errorf("RABBITMQ_HOST environment variable is required")
 	}
 
-	rabbitPort := int32(5672) // default RabbitMQ port
-	if portStr := os.Getenv("RABBITMQ_PORT"); portStr != "" {
-		if parsed, err := strconv.ParseInt(portStr, 10, 32); err == nil {
-			rabbitPort = int32(parsed)
-		}
+	rabbitPortStr := os.Getenv("RABBITMQ_PORT")
+	if rabbitPortStr == "" {
+		return GlobalConfig{}, fmt.Errorf("RABBITMQ_PORT environment variable is required")
+	}
+	rabbitPort, err := strconv.ParseInt(rabbitPortStr, 10, 32)
+	if err != nil {
+		return GlobalConfig{}, fmt.Errorf("RABBITMQ_PORT must be a valid integer: %w", err)
 	}
 
 	rabbitUser := os.Getenv("RABBITMQ_USER")
 	if rabbitUser == "" {
-		rabbitUser = "guest"
+		return GlobalConfig{}, fmt.Errorf("RABBITMQ_USER environment variable is required")
 	}
 
 	rabbitPass := os.Getenv("RABBITMQ_PASS")
 	if rabbitPass == "" {
-		rabbitPass = "guest"
+		return GlobalConfig{}, fmt.Errorf("RABBITMQ_PASS environment variable is required")
 	}
 
 	// Set log level from environment
 	logLevel := os.Getenv("LOG_LEVEL")
 	if logLevel == "" {
-		logLevel = "info"
+		return GlobalConfig{}, fmt.Errorf("LOG_LEVEL environment variable is required")
 	}
 
-	// Get calibration service address from environment or use default
+	// Get calibration service address from environment
 	calibrationAddr := os.Getenv("CALIBRATION_SERVICE_ADDR")
 	if calibrationAddr == "" {
-		calibrationAddr = "calibration-service:50052"
+		return GlobalConfig{}, fmt.Errorf("CALIBRATION_SERVICE_ADDR environment variable is required")
 	}
 
-	// Get data dispatcher service address from environment or use default
+	// Get data dispatcher service address from environment
 	dataDispatcherAddr := os.Getenv("DATA_DISPATCHER_SERVICE_ADDR")
 	if dataDispatcherAddr == "" {
-		dataDispatcherAddr = "data-dispatcher-service:50058"
+		return GlobalConfig{}, fmt.Errorf("DATA_DISPATCHER_SERVICE_ADDR environment variable is required")
 	}
 
-	appPort := os.Getenv("APP_PORT")
-	if appPort == "" {
-		appPort = "8080"
+	host := os.Getenv("HOST")
+	if host == "" {
+		return GlobalConfig{}, fmt.Errorf("HOST environment variable is required")
+	}
+
+	port := os.Getenv("PORT")
+	if port == "" {
+		return GlobalConfig{}, fmt.Errorf("PORT environment variable is required")
 	}
 
 	return GlobalConfig{
 		LogLevel:                  logLevel,
 		RabbitHost:                rabbitHost,
-		RabbitPort:                rabbitPort,
+		RabbitPort:                int32(rabbitPort),
 		RabbitUser:                rabbitUser,
 		RabbitPass:                rabbitPass,
 		CalibrationServiceAddr:    calibrationAddr,
 		DataDispatcherServiceAddr: dataDispatcherAddr,
-		AppPort:                   appPort,
-	}
-}
-
-var Config GlobalConfig
-
-func init() {
-	Config = InitializeConfig()
+		Host:                      host,
+		Port:                      port,
+	}, nil
 }

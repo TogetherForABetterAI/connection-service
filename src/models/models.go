@@ -75,3 +75,20 @@ type UserInfo struct {
 type UserCreateResponse struct {
 	ClientId string `json:"client_id"`
 }
+
+type ConnectNotification struct {
+	ClientId      string `json:"client_id"`
+	InputsFormat  string `json:"inputs_format"`
+	OutputsFormat string `json:"outputs_format"`
+	ModelType     string `json:"model_type"`
+}
+
+// GetUserDataResponse represents the response from users-service get user endpoint
+type GetUserDataResponse struct {
+	ClientId      string `json:"client_id"`
+	Username      string `json:"username"`
+	Email         string `json:"email"`
+	ModelType     string `json:"model_type"`
+	InputsFormat  string `json:"inputs_format"`
+	OutputsFormat string `json:"outputs_format"`
+}

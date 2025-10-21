@@ -1,12 +1,12 @@
 services:
-  auth-gateway:
-    container_name: auth-gateway
+  connection-service:
+    container_name: connection-service
     build: .
     env_file: .env
     networks:
       - tpp-network
     ports:
-      - "${APP_PORT}:${APP_PORT}"
+      - "${PORT}:${PORT}"
     environment:
       - ENVIRONMENT=${ENVIRONMENT}
     volumes:

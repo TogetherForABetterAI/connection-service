@@ -1,20 +1,83 @@
 package main
 
 import (
-	"auth-gateway/logger"
-	"auth-gateway/src/config"
-	"auth-gateway/src/router"
+	"connection-service/src/config"
+	"connection-service/src/router"
+	"context"
 	"fmt"
+	"log"
+	"log/slog"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+
+	_ "connection-service/src/docs"
+
+	_ "github.com/swaggo/files"
+	_ "github.com/swaggo/gin-swagger"
 )
 
+// @title Connection Service API
+// @version 1.0
+// @description Connection Service for managing user connections
+
+// @contact.name   Connection Service Team
+// @contact.url    https://github.com/your-org/connection-service
+// @contact.email  connection-service@example.com
+
 func main() {
-	logger.Init()
-	router := router.Router{logger.Logger}
-	r, err_router := router.SetUpRouter()
-	if err_router != nil {
-		logger.Logger.Fatal("Error while setting up router: ", err_router.Error())
+	config := loadConfig()
+	setupLogging()
+	server := createServer(config)
+	startServerWithGracefulShutdown(server, config)
+}
+
+func loadConfig() config.GlobalConfig {
+	config, err := config.NewConfig()
+	if err != nil {
+		log.Fatalf("Failed to load configuration: %v", err)
 	}
-	if err_router = r.Run(fmt.Sprintf("0.0.0.0:%s", config.Config.AppPort)); err_router != nil {
-		logger.Logger.Fatal("Error while running the server: ", err_router.Error())
+	return config
+}
+
+func setupLogging() {
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	}))
+	slog.SetDefault(logger)
+}
+
+func createServer(config config.GlobalConfig) *http.Server {
+	r := router.NewRouter(config)
+	return &http.Server{
+		Addr:    fmt.Sprintf("%s:%s", config.Host, config.Port),
+		Handler: r,
 	}
+}
+
+func startServerWithGracefulShutdown(server *http.Server, config config.GlobalConfig) {
+	// Channel to listen for interrupt signal
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
+	// Start server in a goroutine
+	go func() {
+		slog.Info("Starting server", "host", config.Host, "port", config.Port)
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Failed to start server: %v", err)
+		}
+	}()
+
+	// Wait for interrupt signal
+	<-quit
+	slog.Info("Shutting down server...")
+
+	// Attempt graceful shutdown without timeout
+	if err := server.Shutdown(context.Background()); err != nil {
+		slog.Error("Server forced to shutdown", "error", err)
+		return
+	}
+
+	slog.Info("Server exited gracefully")
 }
