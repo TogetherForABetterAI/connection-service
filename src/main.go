@@ -2,20 +2,10 @@ package main
 
 import (
 	"connection-service/src/config"
-	"connection-service/src/router"
-	"context"
-	"fmt"
+	"connection-service/src/server"
 	"log"
 	"log/slog"
-	"net/http"
 	"os"
-	"os/signal"
-	"syscall"
-
-	_ "connection-service/src/docs"
-
-	_ "github.com/swaggo/files"
-	_ "github.com/swaggo/gin-swagger"
 )
 
 // @title Connection Service API
@@ -26,14 +16,7 @@ import (
 // @contact.url    https://github.com/your-org/connection-service
 // @contact.email  connection-service@example.com
 
-func main() {
-	config := loadConfig()
-	setupLogging()
-	server := createServer(config)
-	startServerWithGracefulShutdown(server, config)
-}
-
-func loadConfig() config.GlobalConfig {
+func loadConfig() *config.GlobalConfig {
 	config, err := config.NewConfig()
 	if err != nil {
 		log.Fatalf("Failed to load configuration: %v", err)
@@ -41,43 +24,37 @@ func loadConfig() config.GlobalConfig {
 	return config
 }
 
-func setupLogging() {
+func setupLogging(config *config.GlobalConfig) {
+	logLevel := slog.LevelInfo
+	switch config.GetLogLevel() {
+	case "debug":
+		logLevel = slog.LevelDebug
+	case "warn":
+		logLevel = slog.LevelWarn
+	case "error":
+		logLevel = slog.LevelError
+	}
+
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelInfo,
+		Level: logLevel,
 	}))
 	slog.SetDefault(logger)
 }
 
-func createServer(config config.GlobalConfig) *http.Server {
-	r := router.NewRouter(config)
-	return &http.Server{
-		Addr:    fmt.Sprintf("%s:%s", config.Host, config.Port),
-		Handler: r,
-	}
-}
+func main() {
+	config := loadConfig()
+	setupLogging(config)
 
-func startServerWithGracefulShutdown(server *http.Server, config config.GlobalConfig) {
-	// Channel to listen for interrupt signal
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-
-	// Start server in a goroutine
-	go func() {
-		slog.Info("Starting server", "host", config.Host, "port", config.Port)
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("Failed to start server: %v", err)
-		}
-	}()
-
-	// Wait for interrupt signal
-	<-quit
-	slog.Info("Shutting down server...")
-
-	// Attempt graceful shutdown without timeout
-	if err := server.Shutdown(context.Background()); err != nil {
-		slog.Error("Server forced to shutdown", "error", err)
-		return
+	srv, err := server.NewServer(config)
+	if err != nil {
+		slog.Error("Failed to initialize server", "error", err)
+		os.Exit(1)
 	}
 
-	slog.Info("Server exited gracefully")
+	if err := srv.Run(); err != nil {
+		slog.Error("Service exited with error", "error", err)
+		os.Exit(1)
+	}
+
+	slog.Info("Service shutdown complete. Exiting.")
 }

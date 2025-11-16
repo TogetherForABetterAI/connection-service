@@ -1,12 +1,8 @@
 package controller
 
 import (
-	"bytes"
 	"connection-service/src/models"
 	"connection-service/src/service"
-	"encoding/json"
-	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 
@@ -57,84 +53,37 @@ func (c *ConnectionController) Connect(ctx *gin.Context) {
 		return
 	}
 
-	_, err := ValidateToken(reqBody.Token, reqBody.ClientId)
+	// Delegate all business logic to the service layer
+	response, err := c.Service.HandleClientConnection(ctx.Request.Context(), reqBody.ClientId, reqBody.Token)
 	if err != nil {
-		c.sendError(ctx, http.StatusUnauthorized, "Unauthorized", "Token validation failed: "+err.Error(), "https://connection-service.com/validation-error", "/connect")
+		// Determine the appropriate HTTP status code based on the error
+		statusCode := http.StatusInternalServerError
+		errorType := "https://connection-service.com/internal-error"
+
+		// Check if it's a token validation error
+		if err.Error() == "token validation failed: invalid token" ||
+			err.Error() == "token validation failed: token validation failed with status code: 401" {
+			statusCode = http.StatusUnauthorized
+			errorType = "https://connection-service.com/validation-error"
+		}
+
+		c.sendError(ctx, statusCode, getErrorTitle(statusCode), err.Error(), errorType, "/connect")
 		return
 	}
 
-	// Get user data from users-service
-	userData, err := c.getUserData(reqBody.ClientId)
-	if err != nil {
-		c.sendError(ctx, http.StatusInternalServerError, "Internal Error", "Failed to get user data: "+err.Error(), "https://connection-service.com/internal-error", "/connect")
-		return
-	}
-
-	err = c.Service.NotifyNewConnection(userData.ClientId, userData.InputsFormat, userData.OutputsFormat, userData.ModelType)
-	if err != nil {
-		c.sendError(ctx, http.StatusInternalServerError, "Internal Error", err.Error(), "https://connection-service.com/internal-error", "/connect")
-		return
-	}
-
-	ctx.JSON(http.StatusOK, models.ConnectResponse{
-		Status:  "success",
-		Message: "Client connected successfully",
-	})
+	ctx.JSON(http.StatusOK, response)
 }
 
-func ValidateToken(token, clientID string) (*models.TokenValidateResponse, error) {
-	postBody, err := json.Marshal(map[string]string{"token": token, "client_id": clientID})
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to validate token")
+// getErrorTitle returns an appropriate error title based on status code
+func getErrorTitle(statusCode int) string {
+	switch statusCode {
+	case http.StatusBadRequest:
+		return "Bad Request"
+	case http.StatusUnauthorized:
+		return "Unauthorized"
+	case http.StatusInternalServerError:
+		return "Internal Error"
+	default:
+		return "Error"
 	}
-
-	resp, err := http.Post("http://users-service:8000/tokens/validate", "application/json", bytes.NewBuffer(postBody))
-	if err != nil || resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed to validate token")
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	var tokenResp models.TokenValidateResponse
-	if err := json.Unmarshal(body, &tokenResp); err != nil {
-		return nil, err
-	}
-
-	if !tokenResp.IsValid {
-		return nil, fmt.Errorf("invalid token")
-	}
-
-	return &tokenResp, nil
-}
-
-// getUserData fetches user data from users-service
-func (c *ConnectionController) getUserData(clientId string) (*models.GetUserDataResponse, error) {
-	url := fmt.Sprintf("http://users-service:8000/users/%s", clientId)
-
-	resp, err := http.Get(url)
-	if err != nil {
-		return nil, fmt.Errorf("failed to make request to users-service: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("users-service returned status code: %d", resp.StatusCode)
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read response body: %w", err)
-	}
-
-	var userData models.GetUserDataResponse
-	if err := json.Unmarshal(body, &userData); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal user data: %w", err)
-	}
-
-	return &userData, nil
 }

@@ -3,7 +3,9 @@ package router
 import (
 	"connection-service/src/config"
 	"connection-service/src/controller"
+	"connection-service/src/db"
 	"connection-service/src/middleware"
+	"connection-service/src/repository"
 	"connection-service/src/service"
 	"log"
 	"log/slog"
@@ -33,8 +35,8 @@ import (
 // @externalDocs.description  OpenAPI
 // @externalDocs.url          https://swagger.io/resources/open-api/
 
-func createRouterFromConfig(config config.GlobalConfig) *gin.Engine {
-	if config.LogLevel == "production" {
+func createRouterFromConfig(config *config.GlobalConfig) *gin.Engine {
+	if config.GetLogLevel() == "production" {
 		gin.SetMode(gin.ReleaseMode)
 	} else {
 		gin.SetMode(gin.DebugMode)
@@ -51,18 +53,27 @@ func InitializeUserRoutes(r *gin.Engine, connectionController *controller.Connec
 	}
 }
 
-func NewRouter(config config.GlobalConfig) *gin.Engine {
+func NewRouter(config *config.GlobalConfig, database *db.DB) *gin.Engine {
 	r := createRouterFromConfig(config)
 
 	slog.Info("Initializing Connection Service router")
 
 	// Initialize RabbitMQ middleware
-	middleware, err := middleware.NewMiddleware(config)
+	rabbitmqMiddleware, err := middleware.NewMiddleware(config)
 	if err != nil {
 		log.Fatalf("Failed to create RabbitMQ middleware: %v", err)
 	}
 
-	connectionService := service.NewConnectionService(middleware)
+	// Initialize RabbitMQ topology manager
+	topologyManager := middleware.NewRabbitMQTopologyManager(config)
+
+	// Initialize session repository
+	sessionRepository := repository.NewSessionRepository(database)
+
+	// Initialize connection service (with repository instead of database)
+	connectionService := service.NewConnectionService(rabbitmqMiddleware, topologyManager, config, sessionRepository)
+
+	// Initialize connection controller
 	connectionController := controller.NewConnectionController(connectionService)
 
 	// Initialize all routes
