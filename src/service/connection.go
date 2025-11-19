@@ -118,8 +118,7 @@ func (s *ConnectionService) HandleClientConnection(ctx context.Context, clientID
 func (s *ConnectionService) generateCredentials(clientID string) *models.RabbitMQCredentials {
 	return &models.RabbitMQCredentials{
 		Username: fmt.Sprintf("%s_user", clientID),
-		Password: "123", // Hardcoded password as per requirements
-		VHost:    fmt.Sprintf("%s_vhost", clientID),
+		Password: "123", 
 		Host:     s.Config.GetRabbitMQHost(),
 		Port:     s.Config.GetRabbitMQPort(),
 	}

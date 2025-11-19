@@ -31,7 +31,6 @@ type ConnectResponse struct {
 type RabbitMQCredentials struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
-	VHost    string `json:"vhost"`
 	Host     string `json:"host"`
 	Port     int32  `json:"port"`
 }
