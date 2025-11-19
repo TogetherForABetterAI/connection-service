@@ -53,6 +53,13 @@ func InitializeUserRoutes(r *gin.Engine, connectionController *controller.Connec
 	}
 }
 
+func InitializeSessionRoutes(r *gin.Engine, sessionController *controller.SessionController) {
+	sessionsGroup := r.Group("/sessions")
+	{
+		sessionsGroup.PUT("/status", sessionController.UpdateSessionStatus)
+	}
+}
+
 func NewRouter(config *config.GlobalConfig, database *db.DB) *gin.Engine {
 	r := createRouterFromConfig(config)
 
@@ -70,14 +77,20 @@ func NewRouter(config *config.GlobalConfig, database *db.DB) *gin.Engine {
 	// Initialize session repository
 	sessionRepository := repository.NewSessionRepository(database)
 
-	// Initialize connection service (with repository instead of database)
+	// Initialize connection service 
 	connectionService := service.NewConnectionService(rabbitmqMiddleware, topologyManager, config, sessionRepository)
+
+	// Initialize session service
+	sessionService := service.NewSessionService(sessionRepository)
 
 	// Initialize connection controller
 	connectionController := controller.NewConnectionController(connectionService)
 
+	// Initialize session controller
+	sessionController := controller.NewSessionController(sessionService)
+
 	// Initialize all routes
-	InitializeRoutes(r, connectionController)
+	InitializeRoutes(r, connectionController, sessionController)
 
 	// Swagger documentation
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
@@ -89,6 +102,8 @@ func NewRouter(config *config.GlobalConfig, database *db.DB) *gin.Engine {
 func InitializeRoutes(
 	r *gin.Engine,
 	connectionController *controller.ConnectionController,
+	sessionController *controller.SessionController,
 ) {
 	InitializeUserRoutes(r, connectionController)
+	InitializeSessionRoutes(r, sessionController)
 }
