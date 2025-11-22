@@ -72,10 +72,17 @@ func (s *ConnectionService) HandleClientConnection(ctx context.Context, clientID
 			"client_id", clientID,
 			"session_id", activeSession.SessionID)
 
+		// Get user data for inputs_format
+		userData, err := s.getUserData(clientID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get user data: %w", err)
+		}
+
 		return &models.ConnectResponse{
-			Status:      "success",
-			Message:     "Client reconnected to existing session",
-			Credentials: credentials,
+			Status:       "success",
+			Message:      "Client reconnected to existing session",
+			Credentials:  credentials,
+			InputsFormat: userData.InputsFormat,
 		}, nil
 	}
 
@@ -108,9 +115,10 @@ func (s *ConnectionService) HandleClientConnection(ctx context.Context, clientID
 
 	// Action 4: Return success response with credentials
 	return &models.ConnectResponse{
-		Status:      "success",
-		Message:     "Client connected successfully with new session",
-		Credentials: credentials,
+		Status:       "success",
+		Message:      "Client connected successfully with new session",
+		Credentials:  credentials,
+		InputsFormat: userData.InputsFormat,
 	}, nil
 }
 
@@ -118,7 +126,7 @@ func (s *ConnectionService) HandleClientConnection(ctx context.Context, clientID
 func (s *ConnectionService) generateCredentials(clientID string) *models.RabbitMQCredentials {
 	return &models.RabbitMQCredentials{
 		Username: fmt.Sprintf("%s_user", clientID),
-		Password: "123", 
+		Password: "123",
 		Host:     s.Config.GetRabbitMQHost(),
 		Port:     s.Config.GetRabbitMQPort(),
 	}

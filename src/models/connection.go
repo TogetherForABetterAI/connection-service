@@ -8,9 +8,10 @@ type ConnectRequest struct {
 
 // ConnectResponse represents the response after a successful connection.
 type ConnectResponse struct {
-	Status      string               `json:"status"`
-	Message     string               `json:"message"`
-	Credentials *RabbitMQCredentials `json:"credentials,omitempty"`
+	Status       string               `json:"status"`
+	Message      string               `json:"message"`
+	Credentials  *RabbitMQCredentials `json:"credentials,omitempty"`
+	InputsFormat string               `json:"inputs_format"`
 }
 
 // RabbitMQCredentials contains the RabbitMQ connection details for a client
