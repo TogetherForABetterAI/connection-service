@@ -12,16 +12,8 @@ type RabbitMQTopologyManager struct {
 	middleware *Middleware
 }
 
-// NewRabbitMQTopologyManager creates a new topology manager
-func NewRabbitMQTopologyManager(cfg *config.GlobalConfig) *RabbitMQTopologyManager {
-	// Create middleware instance for admin operations
-	// This middleware uses the admin credentials from config
-	middleware, err := NewMiddleware(cfg)
-	if err != nil {
-		slog.Error("Failed to create middleware for topology manager", "error", err)
-		return nil
-	}
-
+// NewTopologyManager creates a new topology manager using an existing middleware instance
+func NewTopologyManager(cfg *config.GlobalConfig, middleware *Middleware) *RabbitMQTopologyManager {
 	return &RabbitMQTopologyManager{
 		config:     cfg,
 		middleware: middleware,
@@ -39,7 +31,7 @@ func (tm *RabbitMQTopologyManager) SetUpTopologyFor(clientID string, password st
 		"vhost", vhost,
 		"username", username)
 
-	if err := tm.middleware.CreateUser(username, password); err != nil { 
+	if err := tm.middleware.CreateUser(username, password); err != nil {
 		return fmt.Errorf("failed to create user: %w", err)
 	}
 
@@ -85,11 +77,16 @@ func (tm *RabbitMQTopologyManager) DeleteTopologyFor(clientID string) error {
 		slog.Error("Failed to delete calibration queue", "queue", calibrationQueue, "error", err)
 	}
 
-	if err := tm.middleware.DeleteUser(username); err != nil { 
+	if err := tm.middleware.DeleteUser(username); err != nil {
 		slog.Error("Failed to delete user", "username", username, "error", err)
 		return fmt.Errorf("failed to complete topology deletion for %s", clientID)
 	}
 
 	slog.Info("Successfully deleted RabbitMQ topology for client", "client_id", clientID)
 	return nil
+}
+
+
+func (tm *RabbitMQTopologyManager) GetMiddleware() *Middleware {
+	return tm.middleware
 }

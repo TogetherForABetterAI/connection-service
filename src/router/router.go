@@ -7,12 +7,11 @@ import (
 	"connection-service/src/middleware"
 	"connection-service/src/repository"
 	"connection-service/src/service"
-	"log"
-	"log/slog"
-
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
+	"log"
+	"log/slog"
 )
 
 // @title           Connection Service API
@@ -60,25 +59,27 @@ func InitializeSessionRoutes(r *gin.Engine, sessionController *controller.Sessio
 	}
 }
 
-func NewRouter(config *config.GlobalConfig, database *db.DB) *gin.Engine {
-	r := createRouterFromConfig(config)
+func NewRouter(cfg *config.GlobalConfig, database *db.DB) *gin.Engine {
+	r := createRouterFromConfig(cfg)
 
 	slog.Info("Initializing Connection Service router")
 
 	// Initialize RabbitMQ middleware
-	rabbitmqMiddleware, err := middleware.NewMiddleware(config)
+	rabbitmqMiddleware, err := middleware.NewMiddleware(cfg)
 	if err != nil {
 		log.Fatalf("Failed to create RabbitMQ middleware: %v", err)
 	}
 
 	// Initialize RabbitMQ topology manager
-	topologyManager := middleware.NewRabbitMQTopologyManager(config)
+	tm := middleware.NewTopologyManager(cfg, rabbitmqMiddleware)
+
+	tm.GetMiddleware().DeclareExchange(config.CONNECTION_EXCHANGE, "fanout", true)
 
 	// Initialize session repository
 	sessionRepository := repository.NewSessionRepository(database)
 
-	// Initialize connection service 
-	connectionService := service.NewConnectionService(rabbitmqMiddleware, topologyManager, config, sessionRepository)
+	// Initialize connection service
+	connectionService := service.NewConnectionService(rabbitmqMiddleware, tm, cfg, sessionRepository)
 
 	// Initialize session service
 	sessionService := service.NewSessionService(sessionRepository)
