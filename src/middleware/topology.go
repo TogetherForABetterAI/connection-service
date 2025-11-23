@@ -24,7 +24,7 @@ func NewTopologyManager(cfg *config.GlobalConfig, middleware *Middleware) *Rabbi
 // This includes: User, Client Queues, Exchange, Bindings, and Permissions
 func (tm *RabbitMQTopologyManager) SetUpTopologyFor(clientID string, password string) error {
 	const vhost = "/"
-	username := fmt.Sprintf("%s_user", clientID)
+	username := clientID
 
 	slog.Info("Setting up RabbitMQ topology for client",
 		"client_id", clientID,
@@ -59,7 +59,7 @@ func (tm *RabbitMQTopologyManager) SetUpTopologyFor(clientID string, password st
 
 // DeleteTopologyFor removes all RabbitMQ resources for a client (useful for cleanup)
 func (tm *RabbitMQTopologyManager) DeleteTopologyFor(clientID string) error {
-	username := fmt.Sprintf("%s_user", clientID)
+	username := clientID
 	dispatcherQueue := fmt.Sprintf("%s_dispatcher_queue", clientID)
 	calibrationQueue := fmt.Sprintf("%s_calibration_queue", clientID)
 	dispatcherToCalibrationQueue := fmt.Sprintf("%s_labeled_queue", clientID)
@@ -85,7 +85,6 @@ func (tm *RabbitMQTopologyManager) DeleteTopologyFor(clientID string) error {
 	slog.Info("Successfully deleted RabbitMQ topology for client", "client_id", clientID)
 	return nil
 }
-
 
 func (tm *RabbitMQTopologyManager) GetMiddleware() *Middleware {
 	return tm.middleware
