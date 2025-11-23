@@ -62,7 +62,7 @@ func (c *UserController) CreateUser(context *gin.Context) {
 		return
 	}
 
-	resp, err := http.Post("http://authenticator-service-app:8000/users/create", "application/json", bytes.NewBuffer(postBody))
+	resp, err := http.Post("http://users-service:8000/users/create", "application/json", bytes.NewBuffer(postBody))
 	if err != nil {
 		logger.Logger.Infof("ERROOOR")
 		utils.SendError(context, http.StatusInternalServerError, "Internal Error", "Failed to send request: "+err.Error(), "https://auth-gateway.com/internal-error", "/users/create")
@@ -95,7 +95,7 @@ func (c *UserController) CreateUser(context *gin.Context) {
 // @Failure 500 {object} models.APIError
 // @Router /users/ [get]
 func (c *UserController) GetUsers(context *gin.Context) {
-	resp, err := http.Get("http://authenticator-service-app:8000/users/")
+	resp, err := http.Get("http://users-service:8000/users/")
 	if err != nil {
 		utils.SendError(context, http.StatusInternalServerError, "Internal Error", "Failed to send request: "+err.Error(), "https://auth-gateway.com/internal-error", "/users/")
 		return
@@ -130,7 +130,7 @@ func (c *UserController) GetUsers(context *gin.Context) {
 // @Router /users/{id} [get]
 func (c *UserController) GetUserByID(context *gin.Context) {
 	userID := context.Param("id")
-	resp, err := http.Get("http://authenticator-service-app:8000/users/" + userID)
+	resp, err := http.Get("http://users-service:8000/users/" + userID)
 	if err != nil {
 		utils.SendError(context, http.StatusInternalServerError, "Internal Error", "Failed to send request: "+err.Error(), "https://auth-gateway.com/internal-error", "/users/"+userID)
 		return

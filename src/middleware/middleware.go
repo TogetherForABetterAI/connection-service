@@ -20,7 +20,7 @@ func ValidateToken(token, userID string) (*models.TokenValidateResponse, error) 
 		return nil, fmt.Errorf("failed to validate token")
 	}
 
-	resp, err := http.Post("http://authenticator-service-app:8000/tokens/validate", "application/json", bytes.NewBuffer(postBody))
+	resp, err := http.Post("http://users-service:8000/tokens/validate", "application/json", bytes.NewBuffer(postBody))
 	if err != nil || resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("failed to validate token")
 	}
@@ -82,7 +82,7 @@ func AdminAuthRequiredMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		req, err := http.NewRequest("POST", "http://authenticator-service-app:8000/admins/authorize", nil)
+		req, err := http.NewRequest("POST", "http://users-service:8000/admins/authorize", nil)
 		if err != nil {
 			utils.SendError(c, http.StatusInternalServerError, "Internal Error", "Failed to create request: "+err.Error(), "https://auth-gateway.com/internal-error", c.FullPath())
 			c.Abort()

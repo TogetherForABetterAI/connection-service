@@ -46,7 +46,7 @@ func (c *TokenController) CreateToken(context *gin.Context) {
 		return
 	}
 
-	resp, err := http.Post("http://authenticator-service-app:8000/tokens/create", "application/json", bytes.NewBuffer(postBody))
+	resp, err := http.Post("http://users-service:8000/tokens/create", "application/json", bytes.NewBuffer(postBody))
 	if err != nil {
 		utils.SendError(context, http.StatusInternalServerError, "Internal Error", "Failed to send request: "+err.Error(), "https://auth-gateway.com/internal-error", "/tokens/create")
 		return
@@ -79,7 +79,7 @@ func (c *TokenController) CreateToken(context *gin.Context) {
 // @Failure 500 {object} models.APIError
 // @Router /tokens/ [get]
 func (c *TokenController) GetTokens(context *gin.Context) {
-	tokensResp, err := http.Get("http://authenticator-service-app:8000/tokens/")
+	tokensResp, err := http.Get("http://users-service:8000/tokens/")
 	if err != nil {
 		utils.SendError(context, http.StatusInternalServerError, "Internal Error", "Failed to send request: "+err.Error(), "https://auth-gateway.com/internal-error", "/tokens/")
 		return

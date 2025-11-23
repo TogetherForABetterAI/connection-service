@@ -75,7 +75,7 @@ type UserCreateRequest struct {
 }
 
 type UserInfo struct {
-	UserID        string    `json:"user_id"`
+	Id            string    `json:"id"`
 	Username      string    `json:"username"`
 	Email         string    `json:"email"`
 	ModelType     string    `json:"model_type"`

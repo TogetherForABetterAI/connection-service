@@ -47,7 +47,7 @@ func (c *AdminController) InviteAdmin(context *gin.Context) {
 		utils.SendError(context, http.StatusInternalServerError, "Internal Error", "Failed to marshal request body: "+err.Error(), "https://auth-gateway.com/internal-error", "/admins/invite")
 		return
 	}
-	resp, err := http.Post("http://authenticator-service-app:8000/admins/invite", "application/json", bytes.NewBuffer(postBody))
+	resp, err := http.Post("http://users-service:8000/admins/invite", "application/json", bytes.NewBuffer(postBody))
 
 	if err != nil {
 		utils.SendError(context, resp.StatusCode, err.Error(), err.Error(), "https://auth-gateway.com/internal-error", "/admins/invite")
@@ -96,7 +96,7 @@ func (c *AdminController) Signup(context *gin.Context) {
 		utils.SendError(context, http.StatusInternalServerError, "Internal Error", "Failed to marshal request body: "+err.Error(), "https://auth-gateway.com/internal-error", "/admins/signup")
 		return
 	}
-	resp, err := http.Post("http://authenticator-service-app:8000/admins/signup", "application/json", bytes.NewBuffer(postBody))
+	resp, err := http.Post("http://users-service:8000/admins/signup", "application/json", bytes.NewBuffer(postBody))
 	logger.Logger.Info("Admin signup attempt for email wewssss")
 	if err != nil {
 		utils.SendError(context, http.StatusBadRequest, "Bad Request", err.Error(), "https://auth-gateway.com/internal-error", "/admins/signup")
@@ -140,7 +140,7 @@ func (c *AdminController) Login(context *gin.Context) {
 		utils.SendError(context, http.StatusInternalServerError, "Internal Error", "Failed to marshal request body: "+err.Error(), "https://auth-gateway.com/internal-error", "/admins/login")
 		return
 	}
-	resp, err := http.Post("http://authenticator-service-app:8000/admins/login", "application/json", bytes.NewBuffer(postBody))
+	resp, err := http.Post("http://users-service:8000/admins/login", "application/json", bytes.NewBuffer(postBody))
 
 	if err != nil {
 		utils.SendError(context, http.StatusInternalServerError, "Internal Error", "Failed to send request: "+err.Error(), "https://auth-gateway.com/internal-error", "/admins/login")
@@ -183,7 +183,7 @@ func (c *AdminController) ListAdmins(context *gin.Context) {
 	var admins []models.AdminInfo
 
 	logger.Logger.Info("Listing admins")
-	resp, err := http.Get("http://authenticator-service-app:8000/admins/")
+	resp, err := http.Get("http://users-service:8000/admins/")
 
 	if err != nil {
 		utils.SendError(context, http.StatusInternalServerError, "Internal Error", "Failed to send request: "+err.Error(), "https://auth-gateway.com/internal-error", "/admins/")
