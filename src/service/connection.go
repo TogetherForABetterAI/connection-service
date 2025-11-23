@@ -133,8 +133,8 @@ func (s *ConnectionService) generateCredentials(clientID string) *models.RabbitM
 }
 
 // validateToken validates a client token with the users-service
-func (s *ConnectionService) validateToken(token, clientID string) error {
-	postBody, err := json.Marshal(map[string]string{"token": token, "client_id": clientID})
+func (s *ConnectionService) validateToken(token, userID string) error {
+	postBody, err := json.Marshal(map[string]string{"token": token, "user_id": userID})
 	if err != nil {
 		return fmt.Errorf("failed to marshal token validation request: %w", err)
 	}
