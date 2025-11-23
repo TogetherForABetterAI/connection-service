@@ -24,14 +24,13 @@ func NewTopologyManager(cfg *config.GlobalConfig, middleware *Middleware) *Rabbi
 // This includes: User, Client Queues, Exchange, Bindings, and Permissions
 func (tm *RabbitMQTopologyManager) SetUpTopologyFor(clientID string, password string) error {
 	const vhost = "/"
-	username := clientID
 
 	slog.Info("Setting up RabbitMQ topology for client",
 		"client_id", clientID,
 		"vhost", vhost,
-		"username", username)
+		"username", clientID)
 
-	if err := tm.middleware.CreateUser(username, password); err != nil {
+	if err := tm.middleware.CreateUser(clientID, password); err != nil {
 		return fmt.Errorf("failed to create user: %w", err)
 	}
 
@@ -49,8 +48,8 @@ func (tm *RabbitMQTopologyManager) SetUpTopologyFor(clientID string, password st
 	writePattern := fmt.Sprintf("^%s$", clientToCalibrationQueue)
 	configurePattern := ""
 
-	if err := tm.middleware.SetPermissions(vhost, username, configurePattern, writePattern, readPattern); err != nil { //
-		return fmt.Errorf("failed to set permissions for user %s: %w", username, err)
+	if err := tm.middleware.SetPermissions(vhost, clientID, configurePattern, writePattern, readPattern); err != nil { //
+		return fmt.Errorf("failed to set permissions for user %s: %w", clientID, err)
 	}
 
 	slog.Info("Successfully set up RabbitMQ topology for client", "client_id", clientID)
