@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	CONNECTION_EXCHANGE = "new_connections"
+	CONNECTION_EXCHANGE = "new_connections_exchange"
 )
 
 // Interface defines the configuration contract
