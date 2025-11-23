@@ -125,7 +125,7 @@ func (s *ConnectionService) HandleClientConnection(ctx context.Context, clientID
 // generateCredentials creates RabbitMQ credentials for a client
 func (s *ConnectionService) generateCredentials(clientID string) *models.RabbitMQCredentials {
 	return &models.RabbitMQCredentials{
-		Username: fmt.Sprintf("%s_user", clientID),
+		Username: fmt.Sprintf("%s", clientID),
 		Password: "123",
 		Host:     s.Config.GetRabbitMQHost(),
 		Port:     s.Config.GetRabbitMQPort(),
