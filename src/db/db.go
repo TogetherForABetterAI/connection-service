@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"os"
 	"time"
 
 	"connection-service/src/config"
@@ -52,6 +53,12 @@ func NewDB(cfg *config.GlobalConfig) (*DB, error) {
 		"port", dbConfig.GetPort(),
 		"database", dbConfig.GetDBName())
 
+	// Execute init.sql to create tables and indexes
+	if err := executeInitSQL(conn); err != nil {
+		conn.Close()
+		return nil, fmt.Errorf("failed to execute init.sql: %w", err)
+	}
+
 	return &DB{conn: conn}, nil
 }
 
@@ -65,5 +72,31 @@ func (db *DB) Close() error {
 	if db.conn != nil {
 		return db.conn.Close()
 	}
+	return nil
+}
+
+// executeInitSQL reads and executes the init.sql file to create tables and indexes
+func executeInitSQL(conn *sql.DB) error {
+	// Read init.sql file
+	sqlScript, err := os.ReadFile("init.sql")
+	if err != nil {
+		// Try alternative path for Docker container
+		sqlScript, err = os.ReadFile("/app/init.sql")
+		if err != nil {
+			slog.Warn("init.sql file not found, skipping table creation", "error", err)
+			return nil // Don't fail if init.sql doesn't exist
+		}
+	}
+
+	// Execute the SQL script
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	_, err = conn.ExecContext(ctx, string(sqlScript))
+	if err != nil {
+		return fmt.Errorf("failed to execute SQL script: %w", err)
+	}
+
+	slog.Info("Successfully executed init.sql - tables and indexes created/verified")
 	return nil
 }
