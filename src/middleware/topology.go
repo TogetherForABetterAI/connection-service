@@ -37,6 +37,8 @@ func (tm *RabbitMQTopologyManager) SetUpTopologyFor(clientID string, password st
 	dispatcherToClientQueue := fmt.Sprintf("%s_dispatcher_queue", clientID)
 	clientToCalibrationQueue := fmt.Sprintf("%s_calibration_queue", clientID)
 
+	slog.Info("Middleware channel", "channel", tm.middleware.channel)
+
 	if err := tm.middleware.DeclareQueue(dispatcherToClientQueue, true); err != nil {
 		return fmt.Errorf("failed to create dispatcher queue: %w", err)
 	}

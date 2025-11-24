@@ -105,11 +105,12 @@ func (s *ConnectionService) HandleClientConnection(ctx context.Context, clientID
 
 	// Action 3: Get user data and notify dispatcher service
 	userData, err := s.getUserData(clientID)
+	slog.Info("Fetched user data", "client_id", clientID, "user_data", userData)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user data: %w", err)
 	}
 
-	if err := s.NotifyNewConnection(userData.ClientId, newSession.SessionID, userData.InputsFormat, userData.OutputsFormat, userData.ModelType); err != nil {
+	if err := s.NotifyNewConnection(userData.Id, newSession.SessionID, userData.InputsFormat, userData.OutputsFormat, userData.ModelType); err != nil {
 		return nil, fmt.Errorf("failed to notify new connection: %w", err)
 	}
 

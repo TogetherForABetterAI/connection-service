@@ -29,7 +29,7 @@ type UserInfo struct {
 
 // GetUserDataResponse represents the response from users-service get user endpoint
 type GetUserDataResponse struct {
-	ClientId      string `json:"client_id"`
+	Id            string `json:"id"`
 	Username      string `json:"username"`
 	Email         string `json:"email"`
 	ModelType     string `json:"model_type"`
