@@ -45,7 +45,7 @@ func (tm *RabbitMQTopologyManager) SetUpTopologyFor(clientID string, password st
 	}
 
 	readPattern := fmt.Sprintf("^%s$", dispatcherToClientQueue)
-	writePattern := fmt.Sprintf("^%s$", clientToCalibrationQueue)
+	writePattern := fmt.Sprintf("^(%s|amq\\.default)$", clientToCalibrationQueue)
 	configurePattern := ""
 
 	if err := tm.middleware.SetPermissions(vhost, clientID, configurePattern, writePattern, readPattern); err != nil { //
