@@ -34,8 +34,8 @@ func (tm *RabbitMQTopologyManager) SetUpTopologyFor(clientID string, password st
 		return fmt.Errorf("failed to create user: %w", err)
 	}
 
-	dispatcherToClientQueue := fmt.Sprintf("%s_dispatcher_queue", clientID)
-	clientToCalibrationQueue := fmt.Sprintf("%s_calibration_queue", clientID)
+	dispatcherToClientQueue := fmt.Sprintf(config.DISPATCHER_TO_CLIENT_QUEUE, clientID)
+	clientToCalibrationQueue := fmt.Sprintf(config.CLIENT_TO_CALIBRATION_QUEUE, clientID)
 
 	if err := tm.middleware.DeclareQueue(dispatcherToClientQueue, true); err != nil {
 		return fmt.Errorf("failed to create dispatcher queue: %w", err)
@@ -59,9 +59,9 @@ func (tm *RabbitMQTopologyManager) SetUpTopologyFor(clientID string, password st
 // DeleteTopologyFor removes all RabbitMQ resources for a client (useful for cleanup)
 func (tm *RabbitMQTopologyManager) DeleteTopologyFor(clientID string) error {
 	username := clientID
-	dispatcherQueue := fmt.Sprintf("%s_dispatcher_queue", clientID)
-	calibrationQueue := fmt.Sprintf("%s_calibration_queue", clientID)
-	dispatcherToCalibrationQueue := fmt.Sprintf("%s_labeled_queue", clientID)
+	dispatcherQueue := fmt.Sprintf(config.DISPATCHER_TO_CLIENT_QUEUE, clientID)
+	calibrationQueue := fmt.Sprintf(config.CLIENT_TO_CALIBRATION_QUEUE, clientID)
+	dispatcherToCalibrationQueue := fmt.Sprintf(config.DISPATCHER_TO_CALIBRATION_QUEUE, clientID)
 
 	slog.Info("Deleting RabbitMQ topology for client", "client_id", clientID)
 

@@ -7,7 +7,10 @@ import (
 )
 
 const (
-	CONNECTION_EXCHANGE = "new_connections_exchange"
+	CONNECTION_EXCHANGE             = "new_connections_exchange"
+	DISPATCHER_TO_CLIENT_QUEUE      = "%s_dispatcher_queue"
+	CLIENT_TO_CALIBRATION_QUEUE     = "%s_calibration_queue"
+	DISPATCHER_TO_CALIBRATION_QUEUE = "%s_labeled_queue"
 )
 
 // Interface defines the configuration contract
@@ -198,9 +201,9 @@ func NewConfig() (*GlobalConfig, error) {
 		return nil, fmt.Errorf("POSTGRES_PASS environment variable is required")
 	}
 
-	postgresDB := os.Getenv("POSTGRES_DB")
+	postgresDB := os.Getenv("POSTGRES_NAME")
 	if postgresDB == "" {
-		return nil, fmt.Errorf("POSTGRES_DB environment variable is required")
+		return nil, fmt.Errorf("POSTGRES_NAME environment variable is required")
 	}
 
 	// Create middleware config
