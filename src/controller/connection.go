@@ -40,7 +40,7 @@ func (c *ConnectionController) sendError(ctx *gin.Context, status int, title str
 // @Tags users
 // @Accept json
 // @Produce json
-// @Param ConnectRequest body models.ConnectRequest true "Connect Request with client ID and token"
+// @Param ConnectRequest body models.ConnectRequest true "Connect Request with User ID and token"
 // @Success 200 {object} models.ConnectResponse
 // @Failure 400 {object} models.APIError
 // @Failure 401 {object} models.APIError
@@ -54,7 +54,7 @@ func (c *ConnectionController) Connect(ctx *gin.Context) {
 	}
 
 	// Delegate all business logic to the service layer
-	response, err := c.Service.HandleClientConnection(ctx.Request.Context(), reqBody.ClientId, reqBody.Token)
+	response, err := c.Service.HandleClientConnection(ctx.Request.Context(), reqBody.UserID, reqBody.Token)
 	if err != nil {
 		// Determine the appropriate HTTP status code based on the error
 		statusCode := http.StatusInternalServerError

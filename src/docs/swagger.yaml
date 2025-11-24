@@ -14,7 +14,7 @@ definitions:
     type: object
   models.ConnectRequest:
     properties:
-      client_id:
+      user_id:
         type: string
       token:
         type: string
@@ -48,12 +48,12 @@ definitions:
     type: object
   models.UserCreateResponse:
     properties:
-      client_id:
+      user_id:
         type: string
     type: object
   models.UserInfo:
     properties:
-      client_id:
+      user_id:
         type: string
       created_at:
         type: string
@@ -74,149 +74,149 @@ paths:
   /tokens/create:
     post:
       consumes:
-      - application/json
+        - application/json
       description: create token
       parameters:
-      - description: Client ID
-        in: body
-        name: client_id
-        required: true
-        schema:
-          type: string
+        - description: User ID
+          in: body
+          name: user_id
+          required: true
+          schema:
+            type: string
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.TokenCreateResponse'
+            $ref: "#/definitions/models.TokenCreateResponse"
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/models.APIError'
+            $ref: "#/definitions/models.APIError"
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/models.APIError'
+            $ref: "#/definitions/models.APIError"
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/models.APIError'
+            $ref: "#/definitions/models.APIError"
       summary: create token
       tags:
-      - tokens
+        - tokens
   /users/:
     get:
       consumes:
-      - application/json
+        - application/json
       description: get users
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: OK
           schema:
             items:
-              $ref: '#/definitions/models.UserInfo'
+              $ref: "#/definitions/models.UserInfo"
             type: array
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/models.APIError'
+            $ref: "#/definitions/models.APIError"
       summary: get users
       tags:
-      - users
+        - users
   /users/{id}:
     get:
       consumes:
-      - application/json
+        - application/json
       description: get user by ID
       parameters:
-      - description: User ID
-        in: path
-        name: id
-        required: true
-        type: string
+        - description: User ID
+          in: path
+          name: id
+          required: true
+          type: string
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.UserInfo'
+            $ref: "#/definitions/models.UserInfo"
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/models.APIError'
+            $ref: "#/definitions/models.APIError"
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/models.APIError'
+            $ref: "#/definitions/models.APIError"
       summary: get user by ID
       tags:
-      - users
+        - users
   /users/connect:
     post:
       consumes:
-      - application/json
+        - application/json
       description: connect
       parameters:
-      - description: Connect Request
-        in: body
-        name: ConnectRequest
-        required: true
-        schema:
-          $ref: '#/definitions/models.ConnectRequest'
+        - description: Connect Request
+          in: body
+          name: ConnectRequest
+          required: true
+          schema:
+            $ref: "#/definitions/models.ConnectRequest"
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.ConnectResponse'
+            $ref: "#/definitions/models.ConnectResponse"
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/models.APIError'
+            $ref: "#/definitions/models.APIError"
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/models.APIError'
+            $ref: "#/definitions/models.APIError"
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/models.APIError'
+            $ref: "#/definitions/models.APIError"
       summary: connect
       tags:
-      - users
+        - users
   /users/create:
     post:
       consumes:
-      - application/json
+        - application/json
       description: create user
       parameters:
-      - description: User Create Request
-        in: body
-        name: CreateUserRequest
-        required: true
-        schema:
-          $ref: '#/definitions/models.UserCreateRequest'
+        - description: User Create Request
+          in: body
+          name: CreateUserRequest
+          required: true
+          schema:
+            $ref: "#/definitions/models.UserCreateRequest"
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.UserCreateResponse'
+            $ref: "#/definitions/models.UserCreateResponse"
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/models.APIError'
+            $ref: "#/definitions/models.APIError"
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/models.APIError'
+            $ref: "#/definitions/models.APIError"
       summary: create user
       tags:
-      - users
+        - users
 swagger: "2.0"

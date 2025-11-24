@@ -24,7 +24,7 @@ const (
 // Session represents a client session in the database
 type Session struct {
 	SessionID        string        `json:"session_id"`
-	ClientID         string        `json:"client_id"`
+	UserID           string        `json:"user_id"`
 	SessionStatus    SessionStatus `json:"session_status"`
 	DispatcherStatus string        `json:"dispatcher_status"`
 	CreatedAt        time.Time     `json:"created_at"`
@@ -43,21 +43,21 @@ func NewSessionRepository(database *db.DB) *SessionRepository {
 	}
 }
 
-// GetActiveSession retrieves an active session for a given client ID
-func (r *SessionRepository) GetActiveSession(ctx context.Context, clientID string) (*Session, error) {
+// GetActiveSession retrieves an active session for a given User ID
+func (r *SessionRepository) GetActiveSession(ctx context.Context, UserID string) (*Session, error) {
 	query := `
-		SELECT session_id, client_id, session_status, dispatcher_status, 
+		SELECT session_id, user_id, session_status, dispatcher_status, 
 		       created_at, completed_at
 		FROM client_sessions
-		WHERE client_id = $1 AND session_status = $2
+		WHERE user_id = $1 AND session_status = $2
 		ORDER BY created_at DESC
 		LIMIT 1
 	`
 
 	var session Session
-	err := r.db.GetConnection().QueryRowContext(ctx, query, clientID, StatusInProgress).Scan(
+	err := r.db.GetConnection().QueryRowContext(ctx, query, UserID, StatusInProgress).Scan(
 		&session.SessionID,
-		&session.ClientID,
+		&session.UserID,
 		&session.SessionStatus,
 		&session.DispatcherStatus,
 		&session.CreatedAt,
@@ -74,22 +74,22 @@ func (r *SessionRepository) GetActiveSession(ctx context.Context, clientID strin
 	}
 
 	slog.Info("Found active session",
-		"client_id", clientID,
+		"user_id", UserID,
 		"session_id", session.SessionID)
 
 	return &session, nil
 }
 
 // CreateSession creates a new session for a client
-func (r *SessionRepository) CreateSession(ctx context.Context, clientID string) (*Session, error) {
+func (r *SessionRepository) CreateSession(ctx context.Context, UserID string) (*Session, error) {
 	sessionID := uuid.New().String()
 	now := time.Now()
 
 	query := `
 		INSERT INTO client_sessions 
-		(session_id, client_id, session_status, dispatcher_status, created_at)
+		(session_id, user_id, session_status, dispatcher_status, created_at)
 		VALUES ($1, $2, $3, $4, $5)
-		RETURNING session_id, client_id, session_status, dispatcher_status, 
+		RETURNING session_id, user_id, session_status, dispatcher_status, 
 		          created_at, completed_at
 	`
 
@@ -98,13 +98,13 @@ func (r *SessionRepository) CreateSession(ctx context.Context, clientID string) 
 		ctx,
 		query,
 		sessionID,
-		clientID,
+		UserID,
 		StatusInProgress,
 		"PENDING", // dispatcher_status
 		now,       // created_at
 	).Scan(
 		&session.SessionID,
-		&session.ClientID,
+		&session.UserID,
 		&session.SessionStatus,
 		&session.DispatcherStatus,
 		&session.CreatedAt,
@@ -116,7 +116,7 @@ func (r *SessionRepository) CreateSession(ctx context.Context, clientID string) 
 	}
 
 	slog.Info("Created new session",
-		"client_id", clientID,
+		"user_id", UserID,
 		"session_id", session.SessionID)
 
 	return &session, nil

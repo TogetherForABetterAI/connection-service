@@ -2,8 +2,8 @@ package models
 
 // ConnectRequest represents the body of a request to create a connection.
 type ConnectRequest struct {
-	ClientId string `json:"client_id"`
-	Token    string `json:"token"`
+	UserID string `json:"user_id"`
+	Token  string `json:"token"`
 }
 
 // ConnectResponse represents the response after a successful connection.
@@ -24,7 +24,7 @@ type RabbitMQCredentials struct {
 
 // ConnectNotification represents a notification sent when a client connects
 type ConnectNotification struct {
-	ClientId      string `json:"client_id"`
+	UserID        string `json:"user_id"`
 	SessionId     string `json:"session_id"`
 	InputsFormat  string `json:"inputs_format"`
 	OutputsFormat string `json:"outputs_format"`

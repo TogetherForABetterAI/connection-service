@@ -18,7 +18,7 @@ type TokenValidateResponse struct {
 
 // TokenCreateRequest represents a request to create a new token
 type TokenCreateRequest struct {
-	ClientId string `json:"client_id"`
+	UserID string `json:"user_id"`
 }
 
 // TokenCreateResponse represents the response after creating a token

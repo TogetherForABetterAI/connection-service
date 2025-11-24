@@ -13,12 +13,12 @@ type UserCreateRequest struct {
 
 // UserCreateResponse represents the response after creating a user
 type UserCreateResponse struct {
-	ClientId string `json:"client_id"`
+	UserID string `json:"user_id"`
 }
 
 // UserInfo represents user information
 type UserInfo struct {
-	ClientId      string    `json:"client_id"`
+	UserID        string    `json:"user_id"`
 	Username      string    `json:"username"`
 	Email         string    `json:"email"`
 	ModelType     string    `json:"model_type"`
@@ -29,7 +29,7 @@ type UserInfo struct {
 
 // GetUserDataResponse represents the response from users-service get user endpoint
 type GetUserDataResponse struct {
-	ClientId      string `json:"client_id"`
+	UserID        string `json:"user_id"`
 	Username      string `json:"username"`
 	Email         string `json:"email"`
 	ModelType     string `json:"model_type"`

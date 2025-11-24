@@ -31,12 +31,12 @@ func NewConnectionService(publisher middleware.Publisher, topologyManager *middl
 	}
 }
 
-func (s *ConnectionService) NotifyNewConnection(clientId, sessionId, inputsFormat, outputsFormat, modelType string) error {
+func (s *ConnectionService) NotifyNewConnection(UserID, sessionId, inputsFormat, outputsFormat, modelType string) error {
 
 	exchangeName := config.CONNECTION_EXCHANGE
 
 	notification := models.ConnectNotification{
-		ClientId:      clientId,
+		UserID:        UserID,
 		SessionId:     sessionId,
 		InputsFormat:  inputsFormat,
 		OutputsFormat: outputsFormat,
@@ -50,30 +50,30 @@ func (s *ConnectionService) NotifyNewConnection(clientId, sessionId, inputsForma
 }
 
 // HandleClientConnection manages the entire client connection flow
-func (s *ConnectionService) HandleClientConnection(ctx context.Context, clientID string, token string) (*models.ConnectResponse, error) {
+func (s *ConnectionService) HandleClientConnection(ctx context.Context, UserID string, token string) (*models.ConnectResponse, error) {
 	// Step 1: Validate Token
-	if err := s.validateToken(token, clientID); err != nil {
+	if err := s.validateToken(token, UserID); err != nil {
 		return nil, fmt.Errorf("token validation failed: %w", err)
 	}
 
 	// Step 2: Query Database for Active Session
-	activeSession, err := s.SessionRepository.GetActiveSession(ctx, clientID)
+	activeSession, err := s.SessionRepository.GetActiveSession(ctx, UserID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query database: %w", err)
 	}
 
 	// Prepare credentials (deterministic naming)
-	credentials := s.generateCredentials(clientID)
+	credentials := s.generateCredentials(UserID)
 
 	// Step 3: Decide Flow based on Session Status
 	if activeSession != nil {
 		// CASE A: Active Session Found - Client is reconnecting
 		slog.Info("Client reconnecting to existing session",
-			"client_id", clientID,
+			"user_id", UserID,
 			"session_id", activeSession.SessionID)
 
 		// Get user data for inputs_format
-		userData, err := s.getUserData(clientID)
+		userData, err := s.getUserData(UserID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get user data: %w", err)
 		}
@@ -87,29 +87,30 @@ func (s *ConnectionService) HandleClientConnection(ctx context.Context, clientID
 	}
 
 	// CASE B: No Active Session - New Client or Completed/Timeout Session
-	slog.Info("Creating new session for client", "client_id", clientID)
+	slog.Info("Creating new session for client", "user_id", UserID)
 
 	// Action 1: Create new session in database
-	newSession, err := s.SessionRepository.CreateSession(ctx, clientID)
+	newSession, err := s.SessionRepository.CreateSession(ctx, UserID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create session: %w", err)
 	}
 
-	slog.Info("Created new session", "client_id", clientID, "session_id", newSession.SessionID)
+	slog.Info("Created new session", "user_id", UserID, "session_id", newSession.SessionID)
 
 	// Action 2: Set up RabbitMQ topology
-	if err := s.TopologyManager.SetUpTopologyFor(clientID, credentials.Password); err != nil {
-		slog.Error("Failed to setup RabbitMQ topology", "client_id", clientID, "error", err)
+	if err := s.TopologyManager.SetUpTopologyFor(UserID, credentials.Password); err != nil {
+		slog.Error("Failed to setup RabbitMQ topology", "user_id", UserID, "error", err)
 		return nil, fmt.Errorf("failed to setup RabbitMQ topology: %w", err)
 	}
 
 	// Action 3: Get user data and notify dispatcher service
-	userData, err := s.getUserData(clientID)
+	userData, err := s.getUserData(UserID)
+	slog.Info("Fetched user data", "user_id", UserID, "user_data", userData)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user data: %w", err)
 	}
 
-	if err := s.NotifyNewConnection(userData.ClientId, newSession.SessionID, userData.InputsFormat, userData.OutputsFormat, userData.ModelType); err != nil {
+	if err := s.NotifyNewConnection(userData.UserID, newSession.SessionID, userData.InputsFormat, userData.OutputsFormat, userData.ModelType); err != nil {
 		return nil, fmt.Errorf("failed to notify new connection: %w", err)
 	}
 
@@ -123,9 +124,9 @@ func (s *ConnectionService) HandleClientConnection(ctx context.Context, clientID
 }
 
 // generateCredentials creates RabbitMQ credentials for a client
-func (s *ConnectionService) generateCredentials(clientID string) *models.RabbitMQCredentials {
+func (s *ConnectionService) generateCredentials(UserID string) *models.RabbitMQCredentials {
 	return &models.RabbitMQCredentials{
-		Username: clientID,
+		Username: UserID,
 		Password: "123",
 		Host:     s.Config.GetRabbitMQHost(),
 		Port:     s.Config.GetRabbitMQPort(),
@@ -167,8 +168,8 @@ func (s *ConnectionService) validateToken(token, userID string) error {
 }
 
 // getUserData fetches user data from users-service
-func (s *ConnectionService) getUserData(clientID string) (*models.GetUserDataResponse, error) {
-	url := fmt.Sprintf("http://users-service:8000/users/%s", clientID)
+func (s *ConnectionService) getUserData(UserID string) (*models.GetUserDataResponse, error) {
+	url := fmt.Sprintf("http://users-service:8000/users/%s", UserID)
 
 	resp, err := http.Get(url)
 	if err != nil {

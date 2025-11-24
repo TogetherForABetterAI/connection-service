@@ -30,8 +30,8 @@ const docTemplate = `{
                 "summary": "create token",
                 "parameters": [
                     {
-                        "description": "Client ID",
-                        "name": "client_id",
+                        "description": "User ID",
+                        "name": "user_id",
                         "in": "body",
                         "required": true,
                         "schema": {
@@ -266,7 +266,7 @@ const docTemplate = `{
         "models.ConnectRequest": {
             "type": "object",
             "properties": {
-                "client_id": {
+                "user_id": {
                     "type": "string"
                 },
                 "token": {
@@ -319,7 +319,7 @@ const docTemplate = `{
         "models.UserCreateResponse": {
             "type": "object",
             "properties": {
-                "client_id": {
+                "user_id": {
                     "type": "string"
                 }
             }
@@ -327,7 +327,7 @@ const docTemplate = `{
         "models.UserInfo": {
             "type": "object",
             "properties": {
-                "client_id": {
+                "user_id": {
                     "type": "string"
                 },
                 "created_at": {
