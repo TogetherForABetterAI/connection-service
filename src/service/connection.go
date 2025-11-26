@@ -144,6 +144,46 @@ func (s *ConnectionService) generateCredentials(UserID string) *schemas.RabbitMQ
 // validateConnection validates a client connection with the users-service
 // Ahora devuelve los datos del usuario si la validación es exitosa
 func (s *ConnectionService) validateConnection(token, userID string) (*schemas.UserInfo, error) {
+	// User Validation
+	userResp, err := http.Get(fmt.Sprintf("http://users-service:8000/users/%s", userID))
+	if err != nil {
+		return nil, schemas.NewBadGatewayError(
+			fmt.Sprintf("failed to connect to users-service: %v", err),
+			"/users/connect",
+		)
+	}
+	defer userResp.Body.Close()
+
+	if userResp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(userResp.Body)
+		slog.Warn("Failed to fetch user data", "user_id", userID, "status", userResp.StatusCode, "body", string(body))
+		return nil, &schemas.ErrorResponse{
+			Type:     "https://connection-service.com/external-service-error",
+			Title:    "User Not Found",
+			Status:   userResp.StatusCode,
+			Detail:   string(body),
+			Instance: "/users/connect",
+		}
+	}
+	userInfo := schemas.UserInfo{}
+	if err := json.NewDecoder(userResp.Body).Decode(&userInfo); err != nil {
+		return nil, schemas.NewInternalError(
+			fmt.Sprintf("failed to decode user info response: %v", err),
+			"/users/connect",
+		)
+	}
+
+	if !userInfo.IsAuthorized {
+		return nil, &schemas.ErrorResponse{
+			Type:     "https://connection-service.com/unauthorized",
+			Title:    "User Not Authorized",
+			Status:   http.StatusForbidden,
+			Detail:   "User is not authorized to connect",
+			Instance: "/users/connect",
+		}
+	}
+
+	// Token Validation
 	postBody, err := json.Marshal(map[string]string{"token": token, "user_id": userID})
 	if err != nil {
 		return nil, schemas.NewInternalError(
@@ -152,38 +192,33 @@ func (s *ConnectionService) validateConnection(token, userID string) (*schemas.U
 		)
 	}
 
-	resp, err := http.Post("http://users-service:8000/sessions/validate-connection", "application/json", bytes.NewBuffer(postBody))
+	validateTokenResp, err := http.Post("http://users-service:8000/tokens/validate", "application/json", bytes.NewBuffer(postBody))
 	if err != nil {
-		// Network error - return 502 Bad Gateway
 		return nil, schemas.NewBadGatewayError(
 			fmt.Sprintf("failed to connect to users-service: %v", err),
 			"/users/connect",
 		)
 	}
-	defer resp.Body.Close()
+	defer validateTokenResp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(validateTokenResp.Body)
 	if err != nil {
 		return nil, schemas.NewBadGatewayError(
 			"failed to read response from users-service",
 			"/users/connect",
 		)
 	}
-
-	if resp.StatusCode == http.StatusOK {
-		var userData schemas.UserInfo
-		if err := json.Unmarshal(body, &userData); err != nil {
-			return nil, schemas.NewBadGatewayError(
-				fmt.Sprintf("failed to parse user data: %v", err),
-				"/users/connect",
-			)
-		}
-		slog.Info("Connection validated successfully", "user_id", userID)
-		return &userData, nil
+	if validateTokenResp.StatusCode >= 500 {
+		// Handle 5xx server errors - return 502 Bad Gateway
+		slog.Warn("Users-service returned server error", "status", validateTokenResp.StatusCode, "body", string(body))
+		return nil, schemas.NewBadGatewayError(
+			fmt.Sprintf("users-service returned status %d: %s", validateTokenResp.StatusCode, string(body)),
+			"/users/connect",
+		)
 	}
 
 	// Handle 4xx client errors - propagate them
-	if resp.StatusCode >= 400 && resp.StatusCode < 500 {
+	if validateTokenResp.StatusCode >= 400 {
 
 		var legacyError struct {
 			Detail string `json:"detail"`
@@ -192,27 +227,22 @@ func (s *ConnectionService) validateConnection(token, userID string) (*schemas.U
 			return nil, &schemas.ErrorResponse{
 				Type:     "https://connection-service.com/external-service-error",
 				Title:    "Validation Failed",
-				Status:   resp.StatusCode,
+				Status:   validateTokenResp.StatusCode,
 				Detail:   legacyError.Detail,
 				Instance: "/users/connect",
 			}
 		}
 
 		// Could not decode - return a generic error with the status code
-		slog.Warn("Connection validation failed", "user_id", userID, "status", resp.StatusCode, "body", string(body))
+		slog.Warn("Connection validation failed", "user_id", userID, "status", validateTokenResp.StatusCode, "body", string(body))
 		return nil, &schemas.ErrorResponse{
 			Type:     "https://connection-service.com/external-service-error",
 			Title:    "Validation Failed",
-			Status:   resp.StatusCode,
+			Status:   validateTokenResp.StatusCode,
 			Detail:   string(body),
 			Instance: "/users/connect",
 		}
 	}
 
-	// Handle 5xx server errors - return 502 Bad Gateway
-	slog.Warn("Users-service returned server error", "status", resp.StatusCode, "body", string(body))
-	return nil, schemas.NewBadGatewayError(
-		fmt.Sprintf("users-service returned status %d: %s", resp.StatusCode, string(body)),
-		"/users/connect",
-	)
+	return &userInfo, nil
 }

@@ -25,6 +25,6 @@ type UserInfo struct {
 	ModelType     string    `json:"model_type"`
 	InputsFormat  string    `json:"inputs_format"`
 	OutputsFormat string    `json:"outputs_format"`
+	IsAuthorized  bool      `json:"is_authorized"`
 	CreatedAt     time.Time `json:"created_at"`
 }
-
