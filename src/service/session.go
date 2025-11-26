@@ -1,6 +1,10 @@
 package service
 
 import (
+	"connection-service/src/middleware"
+	"connection-service/src/models"
+	"connection-service/src/repository"
+	"connection-service/src/schemas"
 	"context"
 	"encoding/json"
 	"errors"
@@ -8,19 +12,17 @@ import (
 	"io"
 	"net/http"
 	"strings"
-
-	"connection-service/src/models"
-	"connection-service/src/repository"
-	"connection-service/src/schemas"
 )
 
 type SessionService struct {
 	repo *repository.SessionRepository
+	tm   *middleware.RabbitMQTopologyManager
 }
 
-func NewSessionService(repo *repository.SessionRepository) *SessionService {
+func NewSessionService(repo *repository.SessionRepository, tm *middleware.RabbitMQTopologyManager) *SessionService {
 	return &SessionService{
 		repo: repo,
+		tm:   tm,
 	}
 }
 
@@ -66,8 +68,10 @@ func (s *SessionService) SetSessionStatusToCompleted(ctx context.Context, sessio
 
 	// Revoke user authorization
 	if err := s.RevokeAuthorization(session.UserID, sessionID); err != nil {
-		return err 
+		return err
 	}
+
+	s.tm.DeleteTopologyFor(session.UserID)
 
 	return nil
 }
@@ -75,7 +79,7 @@ func (s *SessionService) SetSessionStatusToCompleted(ctx context.Context, sessio
 // SetSessionStatusToTimeout sets the session status to TIMEOUT
 func (s *SessionService) SetSessionStatusToTimeout(ctx context.Context, sessionID string) error {
 	// Check if session exists and is in progress
-	status, err := s.repo.GetSessionStatus(ctx, sessionID)
+	session, err := s.repo.GetSessionByID(ctx, sessionID)
 	if err != nil {
 		// Translate repository errors to schema errors
 		if errors.Is(err, models.ErrSessionNotFound) {
@@ -91,7 +95,7 @@ func (s *SessionService) SetSessionStatusToTimeout(ctx context.Context, sessionI
 	}
 
 	// Check if session is in progress
-	if status != models.StatusInProgress {
+	if session.SessionStatus != models.StatusInProgress {
 		return schemas.SessionNotInProgressError(
 			"cannot update status: session is not IN_PROGRESS",
 			"/sessions/"+sessionID+"/status/timeout",
@@ -112,6 +116,8 @@ func (s *SessionService) SetSessionStatusToTimeout(ctx context.Context, sessionI
 			"/sessions/"+sessionID+"/status/timeout",
 		)
 	}
+
+	s.tm.DeleteTopologyFor(session.UserID)
 
 	return nil
 }
