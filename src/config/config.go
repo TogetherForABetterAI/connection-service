@@ -201,9 +201,9 @@ func NewConfig() (*GlobalConfig, error) {
 		return nil, fmt.Errorf("POSTGRES_PASS environment variable is required")
 	}
 
-	postgresDB := os.Getenv("POSTGRES_NAME")
+	postgresDB := os.Getenv("POSTGRES_DB")
 	if postgresDB == "" {
-		return nil, fmt.Errorf("POSTGRES_NAME environment variable is required")
+		return nil, fmt.Errorf("POSTGRES_DB environment variable is required")
 	}
 
 	// Create middleware config
