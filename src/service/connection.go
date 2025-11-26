@@ -11,8 +11,8 @@ import (
 
 	"connection-service/src/config"
 	"connection-service/src/middleware"
-	"connection-service/src/models"
 	"connection-service/src/repository"
+	"connection-service/src/schemas"
 )
 
 type ConnectionService struct {
@@ -35,7 +35,7 @@ func (s *ConnectionService) NotifyNewConnection(UserID, sessionId, inputsFormat,
 
 	exchangeName := config.CONNECTION_EXCHANGE
 
-	notification := models.ConnectNotification{
+	notification := schemas.NotifyNewConnection{
 		UserID:        UserID,
 		SessionId:     sessionId,
 		InputsFormat:  inputsFormat,
@@ -50,54 +50,53 @@ func (s *ConnectionService) NotifyNewConnection(UserID, sessionId, inputsFormat,
 }
 
 // HandleClientConnection manages the entire client connection flow
-// Returns (response, statusCode, detail, error) for proper error propagation
-func (s *ConnectionService) HandleClientConnection(ctx context.Context, UserID string, token string) (*models.ConnectResponse, *models.ServiceError, error) {
-	// Step 1: Validate Connection
-	serviceErr, err := s.validateConnection(token, UserID)
-	if serviceErr != nil {
-		return nil, serviceErr, nil
-	}
+// Returns (response, error) following idiomatic Go error handling
+func (s *ConnectionService) HandleClientConnection(ctx context.Context, UserID string, token string) (*schemas.ConnectResponse, error) {
+	// Step 1: Validate Connection y obtener datos del usuario
+	userData, err := s.validateConnection(token, UserID)
 	if err != nil {
-		return nil, nil, fmt.Errorf("connection validation failed: %w", err)
+		return nil, err
 	}
 
 	// Step 2: Query Database for Active Session
 	activeSession, err := s.SessionRepository.GetActiveSession(ctx, UserID)
 	if err != nil {
-		return nil, models.NewServiceError(http.StatusInternalServerError, "", "Failed to query database"), fmt.Errorf("failed to query database: %w", err)
+		return nil, schemas.NewInternalError(
+			fmt.Sprintf("failed to query database: %v", err),
+			"/users/connect",
+		)
 	}
 
 	// Prepare credentials (deterministic naming)
 	credentials := s.generateCredentials(UserID)
 
-	// Step 3: Decide Flow based on Session Status
+	// Step 3: Check Active Session
 	if activeSession != nil {
 		// CASE A: Active Session Found - Client is reconnecting
 		slog.Info("Client reconnecting to existing session",
 			"user_id", UserID,
 			"session_id", activeSession.SessionID)
 
-		// Get user data for inputs_format
-		userData, err := s.getUserData(UserID)
-		if err != nil {
-			return nil, models.NewServiceError(http.StatusInternalServerError, "", "Failed to get user data"), fmt.Errorf("failed to get user data: %w", err)
-		}
-
-		return &models.ConnectResponse{
-			Status:       "success",
-			Message:      "Client reconnected to existing session",
-			Credentials:  credentials,
-			InputsFormat: userData.InputsFormat,
-		}, nil, nil
+		return &schemas.ConnectResponse{
+			Status:        "success",
+			Message:       "Client reconnected to existing session",
+			Credentials:   credentials,
+			InputsFormat:  userData.InputsFormat,
+			OutputsFormat: userData.OutputsFormat,
+			ModelType:     userData.ModelType,
+		}, nil
 	}
 
-	// CASE B: No Active Session - New Client or Completed/Timeout Session
+	// CASE B: No Active Session - New Client Connection (New Session)
 	slog.Info("Creating new session for client", "user_id", UserID)
 
 	// Action 1: Create new session in database
 	newSession, err := s.SessionRepository.CreateSession(ctx, UserID)
 	if err != nil {
-		return nil, models.NewServiceError(http.StatusInternalServerError, "", "Failed to create session"), fmt.Errorf("failed to create session: %w", err)
+		return nil, schemas.NewInternalError(
+			fmt.Sprintf("failed to create session: %v", err),
+			"/users/connect",
+		)
 	}
 
 	slog.Info("Created new session", "user_id", UserID, "session_id", newSession.SessionID)
@@ -105,32 +104,36 @@ func (s *ConnectionService) HandleClientConnection(ctx context.Context, UserID s
 	// Action 2: Set up RabbitMQ topology
 	if err := s.TopologyManager.SetUpTopologyFor(UserID, credentials.Password); err != nil {
 		slog.Error("Failed to setup RabbitMQ topology", "user_id", UserID, "error", err)
-		return nil, models.NewServiceError(http.StatusInternalServerError, "", "Failed to setup RabbitMQ topology"), fmt.Errorf("failed to setup RabbitMQ topology: %w", err)
+		return nil, schemas.NewInternalError(
+			fmt.Sprintf("failed to setup RabbitMQ topology: %v", err),
+			"/users/connect",
+		)
 	}
 
-	// Action 3: Get user data and notify dispatcher service
-	userData, err := s.getUserData(UserID)
+	// Action 3: Notificar dispatcher service usando userData
 	slog.Info("Fetched user data", "user_id", UserID, "user_data", userData)
-	if err != nil {
-		return nil, models.NewServiceError(http.StatusInternalServerError, "", "Failed to get user data"), fmt.Errorf("failed to get user data: %w", err)
-	}
 
 	if err := s.NotifyNewConnection(userData.UserID, newSession.SessionID, userData.InputsFormat, userData.OutputsFormat, userData.ModelType); err != nil {
-		return nil, models.NewServiceError(http.StatusInternalServerError, "", "Failed to notify new connection"), fmt.Errorf("failed to notify new connection: %w", err)
+		return nil, schemas.NewInternalError(
+			fmt.Sprintf("failed to notify new connection: %v", err),
+			"/users/connect",
+		)
 	}
 
 	// Action 4: Return success response with credentials
-	return &models.ConnectResponse{
-		Status:       "success",
-		Message:      "Client connected successfully with new session",
-		Credentials:  credentials,
-		InputsFormat: userData.InputsFormat,
-	}, nil, nil
+	return &schemas.ConnectResponse{
+		Status:        "success",
+		Message:       "Client connected successfully with new session",
+		Credentials:   credentials,
+		InputsFormat:  userData.InputsFormat,
+		OutputsFormat: userData.OutputsFormat,
+		ModelType:     userData.ModelType,
+	}, nil
 }
 
 // generateCredentials creates RabbitMQ credentials for a client
-func (s *ConnectionService) generateCredentials(UserID string) *models.RabbitMQCredentials {
-	return &models.RabbitMQCredentials{
+func (s *ConnectionService) generateCredentials(UserID string) *schemas.RabbitMQCredentials {
+	return &schemas.RabbitMQCredentials{
 		Username: UserID,
 		Password: "123",
 		Host:     s.Config.GetRabbitMQHost(),
@@ -139,75 +142,77 @@ func (s *ConnectionService) generateCredentials(UserID string) *models.RabbitMQC
 }
 
 // validateConnection validates a client connection with the users-service
-// Returns (*ServiceError, error) where ServiceError contains statusCode and detail from users-service
-func (s *ConnectionService) validateConnection(token, userID string) (*models.ServiceError, error) {
+// Ahora devuelve los datos del usuario si la validación es exitosa
+func (s *ConnectionService) validateConnection(token, userID string) (*schemas.UserInfo, error) {
 	postBody, err := json.Marshal(map[string]string{"token": token, "user_id": userID})
 	if err != nil {
-		return models.NewServiceError(http.StatusInternalServerError, "", "Failed to marshal request"), fmt.Errorf("failed to marshal connection validation request: %w", err)
+		return nil, schemas.NewInternalError(
+			fmt.Sprintf("failed to marshal connection validation request: %v", err),
+			"/users/connect",
+		)
 	}
 
 	resp, err := http.Post("http://users-service:8000/sessions/validate-connection", "application/json", bytes.NewBuffer(postBody))
 	if err != nil {
-		return models.NewServiceError(http.StatusInternalServerError, "", "Failed to connect to users-service"), fmt.Errorf("failed to make request to users-service: %w", err)
+		// Network error - return 502 Bad Gateway
+		return nil, schemas.NewBadGatewayError(
+			fmt.Sprintf("failed to connect to users-service: %v", err),
+			"/users/connect",
+		)
 	}
 	defer resp.Body.Close()
 
-	// If status is 200, connection is valid
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, schemas.NewBadGatewayError(
+			"failed to read response from users-service",
+			"/users/connect",
+		)
+	}
+
 	if resp.StatusCode == http.StatusOK {
+		var userData schemas.UserInfo
+		if err := json.Unmarshal(body, &userData); err != nil {
+			return nil, schemas.NewBadGatewayError(
+				fmt.Sprintf("failed to parse user data: %v", err),
+				"/users/connect",
+			)
+		}
 		slog.Info("Connection validated successfully", "user_id", userID)
-		return nil, nil
+		return &userData, nil
 	}
 
-	// For any non-200 status, read the body and extract detail
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		slog.Warn("Failed to read error response body", "error", err, "status", resp.StatusCode)
-		return models.NewServiceError(resp.StatusCode, "", "Failed to read error response"), fmt.Errorf("failed to read error response body: %w", err)
+	// Handle 4xx client errors - propagate them
+	if resp.StatusCode >= 400 && resp.StatusCode < 500 {
+
+		var legacyError struct {
+			Detail string `json:"detail"`
+		}
+		if err := json.Unmarshal(body, &legacyError); err == nil && legacyError.Detail != "" {
+			return nil, &schemas.ErrorResponse{
+				Type:     "https://connection-service.com/external-service-error",
+				Title:    "Validation Failed",
+				Status:   resp.StatusCode,
+				Detail:   legacyError.Detail,
+				Instance: "/users/connect",
+			}
+		}
+
+		// Could not decode - return a generic error with the status code
+		slog.Warn("Connection validation failed", "user_id", userID, "status", resp.StatusCode, "body", string(body))
+		return nil, &schemas.ErrorResponse{
+			Type:     "https://connection-service.com/external-service-error",
+			Title:    "Validation Failed",
+			Status:   resp.StatusCode,
+			Detail:   string(body),
+			Instance: "/users/connect",
+		}
 	}
 
-	// Parse JSON to extract "detail" field
-	var errorResponse struct {
-		Detail string `json:"detail"`
-	}
-
-	if err := json.Unmarshal(body, &errorResponse); err != nil {
-		// If can't parse, use raw body as detail
-		slog.Warn("Failed to parse error response", "error", err, "body", string(body))
-		return models.NewServiceError(resp.StatusCode, string(body), "validation failed"), nil
-	}
-
-	// Log and return status code and detail from users-service
-	slog.Warn("Connection validation failed",
-		"user_id", userID,
-		"status", resp.StatusCode,
-		"detail", errorResponse.Detail)
-
-	return models.NewServiceError(resp.StatusCode, errorResponse.Detail, "validation failed"), nil
-}
-
-// getUserData fetches user data from users-service
-func (s *ConnectionService) getUserData(UserID string) (*models.GetUserDataResponse, error) {
-	url := fmt.Sprintf("http://users-service:8000/users/%s", UserID)
-
-	resp, err := http.Get(url)
-	if err != nil {
-		return nil, fmt.Errorf("failed to make request to users-service: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("users-service returned status code: %d", resp.StatusCode)
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read response body: %w", err)
-	}
-
-	var userData models.GetUserDataResponse
-	if err := json.Unmarshal(body, &userData); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal user data: %w", err)
-	}
-
-	return &userData, nil
+	// Handle 5xx server errors - return 502 Bad Gateway
+	slog.Warn("Users-service returned server error", "status", resp.StatusCode, "body", string(body))
+	return nil, schemas.NewBadGatewayError(
+		fmt.Sprintf("users-service returned status %d: %s", resp.StatusCode, string(body)),
+		"/users/connect",
+	)
 }

@@ -3,33 +3,16 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
 
 	"connection-service/src/db"
+	"connection-service/src/models"
 
 	"github.com/google/uuid"
 )
-
-// SessionStatus represents the status of a client session
-type SessionStatus string
-
-const (
-	StatusInProgress SessionStatus = "IN_PROGRESS"
-	StatusCompleted  SessionStatus = "COMPLETED"
-	StatusTimeout    SessionStatus = "TIMEOUT"
-)
-
-// Session represents a client session in the database
-type Session struct {
-	SessionID        string        `json:"session_id"`
-	UserID           string        `json:"user_id"`
-	SessionStatus    SessionStatus `json:"session_status"`
-	DispatcherStatus string        `json:"dispatcher_status"`
-	CreatedAt        time.Time     `json:"created_at"`
-	CompletedAt      *time.Time    `json:"completed_at,omitempty"`
-}
 
 // SessionRepository handles all database operations for sessions
 type SessionRepository struct {
@@ -43,8 +26,36 @@ func NewSessionRepository(database *db.DB) *SessionRepository {
 	}
 }
 
+func (r *SessionRepository) GetSessionByID(ctx context.Context, sessionID string) (*models.Session, error) {
+	query := `
+		SELECT session_id, user_id, session_status, dispatcher_status, 
+		       created_at, completed_at
+		FROM client_sessions
+		WHERE session_id = $1
+	`
+
+	var session models.Session
+	err := r.db.GetConnection().QueryRowContext(ctx, query, sessionID).Scan(
+		&session.SessionID,
+		&session.UserID,
+		&session.SessionStatus,
+		&session.DispatcherStatus,
+		&session.CreatedAt,
+		&session.CompletedAt,
+	)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("session with ID %s: %w", sessionID, models.ErrSessionNotFound)
+		}
+		return nil, fmt.Errorf("failed to get session by ID: %w", err)
+	}
+
+	return &session, nil
+}
+
 // GetActiveSession retrieves an active session for a given User ID
-func (r *SessionRepository) GetActiveSession(ctx context.Context, UserID string) (*Session, error) {
+func (r *SessionRepository) GetActiveSession(ctx context.Context, UserID string) (*models.Session, error) {
 	query := `
 		SELECT session_id, user_id, session_status, dispatcher_status, 
 		       created_at, completed_at
@@ -54,8 +65,8 @@ func (r *SessionRepository) GetActiveSession(ctx context.Context, UserID string)
 		LIMIT 1
 	`
 
-	var session Session
-	err := r.db.GetConnection().QueryRowContext(ctx, query, UserID, StatusInProgress).Scan(
+	var session models.Session
+	err := r.db.GetConnection().QueryRowContext(ctx, query, UserID, models.StatusInProgress).Scan(
 		&session.SessionID,
 		&session.UserID,
 		&session.SessionStatus,
@@ -81,7 +92,7 @@ func (r *SessionRepository) GetActiveSession(ctx context.Context, UserID string)
 }
 
 // CreateSession creates a new session for a client
-func (r *SessionRepository) CreateSession(ctx context.Context, UserID string) (*Session, error) {
+func (r *SessionRepository) CreateSession(ctx context.Context, UserID string) (*models.Session, error) {
 	sessionID := uuid.New().String()
 	now := time.Now()
 
@@ -93,13 +104,13 @@ func (r *SessionRepository) CreateSession(ctx context.Context, UserID string) (*
 		          created_at, completed_at
 	`
 
-	var session Session
+	var session models.Session
 	err := r.db.GetConnection().QueryRowContext(
 		ctx,
 		query,
 		sessionID,
 		UserID,
-		StatusInProgress,
+		models.StatusInProgress,
 		"PENDING", // dispatcher_status
 		now,       // created_at
 	).Scan(
@@ -123,7 +134,7 @@ func (r *SessionRepository) CreateSession(ctx context.Context, UserID string) (*
 }
 
 // UpdateSessionStatus updates the status of a session
-func (r *SessionRepository) UpdateSessionStatus(ctx context.Context, sessionID string, status SessionStatus) error {
+func (r *SessionRepository) UpdateSessionStatus(ctx context.Context, sessionID string, status models.SessionStatus) error {
 	query := `
 		UPDATE client_sessions
 		SET session_status = $1
@@ -141,7 +152,7 @@ func (r *SessionRepository) UpdateSessionStatus(ctx context.Context, sessionID s
 	}
 
 	if rowsAffected == 0 {
-		return fmt.Errorf("session not found: %s", sessionID)
+		return fmt.Errorf("update session %s: %w", sessionID, models.ErrSessionNotFound)
 	}
 
 	slog.Info("Updated session status",
@@ -170,8 +181,23 @@ func (r *SessionRepository) UpdateDispatcherStatus(ctx context.Context, sessionI
 	}
 
 	if rowsAffected == 0 {
-		return fmt.Errorf("session not found: %s", sessionID)
+		return fmt.Errorf("update dispatcher status for session %s: %w", sessionID, models.ErrSessionNotFound)
 	}
 
 	return nil
+}
+
+// GetSessionStatus retrieves the session status for the given session ID
+// Returns the session status and error if not found
+func (r *SessionRepository) GetSessionStatus(ctx context.Context, sessionID string) (models.SessionStatus, error) {
+	query := `SELECT session_status FROM client_sessions WHERE session_id = $1`
+	var status models.SessionStatus
+	err := r.db.GetConnection().QueryRowContext(ctx, query, sessionID).Scan(&status)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", fmt.Errorf("get status for session %s: %w", sessionID, models.ErrSessionNotFound)
+		}
+		return "", fmt.Errorf("failed to get session status: %w", err)
+	}
+	return status, nil
 }

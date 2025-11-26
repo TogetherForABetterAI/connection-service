@@ -7,11 +7,12 @@ import (
 	"connection-service/src/middleware"
 	"connection-service/src/repository"
 	"connection-service/src/service"
+	"log"
+	"log/slog"
+
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
-	"log"
-	"log/slog"
 )
 
 // @title           Connection Service API
@@ -55,7 +56,8 @@ func InitializeUserRoutes(r *gin.Engine, connectionController *controller.Connec
 func InitializeSessionRoutes(r *gin.Engine, sessionController *controller.SessionController) {
 	sessionsGroup := r.Group("/sessions")
 	{
-		sessionsGroup.PUT("/status", sessionController.UpdateSessionStatus)
+		sessionsGroup.PUT("/:session_id/status/completed", sessionController.SetSessionStatusToCompleted)
+		sessionsGroup.PUT("/:session_id/status/timeout", sessionController.SetSessionStatusToTimeout)
 	}
 }
 

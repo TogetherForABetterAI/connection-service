@@ -1,5 +1,6 @@
-package models
+package schemas
 
+// ...existing code from models/user.go...
 import "time"
 
 // UserCreateRequest represents a request to create a new user
@@ -27,12 +28,3 @@ type UserInfo struct {
 	CreatedAt     time.Time `json:"created_at"`
 }
 
-// GetUserDataResponse represents the response from users-service get user endpoint
-type GetUserDataResponse struct {
-	UserID        string `json:"user_id"`
-	Username      string `json:"username"`
-	Email         string `json:"email"`
-	ModelType     string `json:"model_type"`
-	InputsFormat  string `json:"inputs_format"`
-	OutputsFormat string `json:"outputs_format"`
-}

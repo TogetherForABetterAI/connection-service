@@ -1,0 +1,3 @@
+package schemas
+
+// ...existing code from models/token.go...
