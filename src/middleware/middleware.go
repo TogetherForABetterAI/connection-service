@@ -1,10 +1,15 @@
 package middleware
 
 import (
+	"bytes"
 	"connection-service/src/config"
+	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"log/slog"
+	"net/http"
+	"strings"
 	"time"
 
 	"github.com/streadway/amqp"
@@ -14,7 +19,7 @@ type Middleware struct {
 	conn          *amqp.Connection
 	channel       *amqp.Channel
 	confirms_chan chan amqp.Confirmation
-	config        config.GlobalConfig
+	config        *config.GlobalConfig
 }
 
 const MAX_RETRIES = 5
@@ -24,9 +29,13 @@ type Publisher interface {
 	Publish(exchange string, body []byte) error
 }
 
-func NewMiddleware(config config.GlobalConfig) (*Middleware, error) {
+func NewMiddleware(config *config.GlobalConfig) (*Middleware, error) {
+	middlewareConfig := config.GetMiddlewareConfig()
 	url := fmt.Sprintf("amqp://%s:%s@%s:%d/",
-		config.RabbitUser, config.RabbitPass, config.RabbitHost, config.RabbitPort)
+		middlewareConfig.GetUsername(),
+		middlewareConfig.GetPassword(),
+		middlewareConfig.GetHost(),
+		middlewareConfig.GetPort())
 
 	conn, err := amqp.Dial(url)
 	if err != nil {
@@ -49,19 +58,16 @@ func NewMiddleware(config config.GlobalConfig) (*Middleware, error) {
 		return nil, err
 	}
 
-	slog.Info("Connected to RabbitMQ", "host", config.RabbitHost, "port", config.RabbitPort, "user", config.RabbitUser)
+	slog.Info("Connected to RabbitMQ",
+		"host", middlewareConfig.GetHost(),
+		"port", middlewareConfig.GetPort(),
+		"user", middlewareConfig.GetUsername())
 
 	middleware := &Middleware{
 		conn:          conn,
 		channel:       ch,
 		confirms_chan: confirms_chan,
 		config:        config,
-	}
-
-	// Setup connection queues automatically
-	if err := middleware.setupConnectionQueues(); err != nil {
-		middleware.Close()
-		return nil, fmt.Errorf("failed to setup connection queues: %w", err)
 	}
 
 	return middleware, nil
@@ -183,29 +189,154 @@ func (m *Middleware) Close() {
 	}
 }
 
-func (m *Middleware) setupConnectionQueues() error {
-	exchangeName := config.CONNECTION_EXCHANGE
-	queues := []string{config.DATA_DISPATCHER_CONNECTION, config.CALIBRATION_SERVICE_CONNECTION}
+// DeleteQueue deletes a RabbitMQ queue
+func (m *Middleware) DeleteQueue(queueName string) error {
+	_, err := m.channel.QueueDelete(
+		queueName, // name
+		false,     // ifUnused
+		false,     // ifEmpty
+		false,     // noWait
+	)
 
-	slog.Info("Setting up RabbitMQ queues and bindings", "exchange", exchangeName, "queues", queues)
-
-	// Declare the exchange (fanout type for broadcasting)
-	if err := m.DeclareExchange(exchangeName, "fanout", false); err != nil {
-		return err
+	if err != nil {
+		return fmt.Errorf("failed to delete queue %s: %w", queueName, err)
 	}
 
-	// Declare queues and bind them to the exchange
-	for _, queueName := range queues {
-		if err := m.DeclareQueue(queueName, false); err != nil {
-			return err
-		}
+	slog.Info("Deleted Queue", "queue", queueName)
+	return nil
+}
 
-		if err := m.BindQueue(queueName, exchangeName, ""); err != nil {
-			return err
-		}
+//
+// HTTP Management API Methods
+//
 
-		slog.Info("Queue created and bound to exchange", "queue", queueName, "exchange", exchangeName)
+// GetAdminAPIURL returns the RabbitMQ Management API URL
+func (m *Middleware) GetAdminAPIURL() string {
+	middlewareConfig := m.config.GetMiddlewareConfig()
+	return fmt.Sprintf("http://%s:15672/api", middlewareConfig.GetHost())
+}
+
+// GetAdminCredentials returns the admin username and password
+func (m *Middleware) GetAdminCredentials() (string, string) {
+	middlewareConfig := m.config.GetMiddlewareConfig()
+	return middlewareConfig.GetUsername(), middlewareConfig.GetPassword()
+}
+
+// CreateUser creates a new RabbitMQ user using HTTP Management API
+func (m *Middleware) CreateUser(username, password string) error {
+	adminAPIURL := m.GetAdminAPIURL()
+	adminUser, adminPass := m.GetAdminCredentials()
+
+	url := fmt.Sprintf("%s/users/%s", adminAPIURL, username)
+
+	userData := map[string]interface{}{
+		"password": password,
+		"tags":     "", // No admin tags for client users
 	}
 
+	jsonData, err := json.Marshal(userData)
+	if err != nil {
+		return fmt.Errorf("failed to marshal user data: %w", err)
+	}
+
+	req, err := http.NewRequest("PUT", url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.SetBasicAuth(adminUser, adminPass)
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to execute request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	// 201: User was created successfully
+	// 204: User already exists and was updated (not an error)
+	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusNoContent {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("failed to create user, status code: %d, response: %s", resp.StatusCode, string(body))
+	}
+
+	if resp.StatusCode == http.StatusCreated {
+		slog.Info("Created new RabbitMQ user", "username", username)
+	} else {
+		slog.Info("RabbitMQ user already exists, credentials updated", "username", username)
+	}
+
+	return nil
+}
+
+// SetPermissions sets permissions for a user on a vhost using HTTP Management API
+func (m *Middleware) SetPermissions(vhost, username, configurePattern, writePattern, readPattern string) error {
+	adminAPIURL := m.GetAdminAPIURL()
+	adminUser, adminPass := m.GetAdminCredentials()
+
+	encodedVhost := strings.ReplaceAll(vhost, "/", "%2F")
+	url := fmt.Sprintf("%s/permissions/%s/%s", adminAPIURL, encodedVhost, username)
+
+	permissions := map[string]interface{}{
+		"configure": configurePattern,
+		"write":     writePattern,
+		"read":      readPattern,
+	}
+
+	jsonData, err := json.Marshal(permissions)
+	if err != nil {
+		return fmt.Errorf("failed to marshal permissions: %w", err)
+	}
+
+	req, err := http.NewRequest("PUT", url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.SetBasicAuth(adminUser, adminPass)
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to execute request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("failed to set permissions, status code: %d", resp.StatusCode)
+	}
+
+	slog.Info("Set Permissions", "vhost", vhost, "username", username)
+	return nil
+}
+
+// DeleteUser deletes a RabbitMQ user using HTTP Management API
+func (m *Middleware) DeleteUser(username string) error {
+	adminAPIURL := m.GetAdminAPIURL()
+	adminUser, adminPass := m.GetAdminCredentials()
+
+	url := fmt.Sprintf("%s/users/%s", adminAPIURL, username)
+
+	req, err := http.NewRequest("DELETE", url, nil)
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.SetBasicAuth(adminUser, adminPass)
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to execute request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusNotFound {
+		return fmt.Errorf("failed to delete user, status code: %d", resp.StatusCode)
+	}
+
+	slog.Info("Deleted User", "username", username)
 	return nil
 }

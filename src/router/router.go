@@ -3,7 +3,9 @@ package router
 import (
 	"connection-service/src/config"
 	"connection-service/src/controller"
+	"connection-service/src/db"
 	"connection-service/src/middleware"
+	"connection-service/src/repository"
 	"connection-service/src/service"
 	"log"
 	"log/slog"
@@ -33,8 +35,8 @@ import (
 // @externalDocs.description  OpenAPI
 // @externalDocs.url          https://swagger.io/resources/open-api/
 
-func createRouterFromConfig(config config.GlobalConfig) *gin.Engine {
-	if config.LogLevel == "production" {
+func createRouterFromConfig(config *config.GlobalConfig) *gin.Engine {
+	if config.GetLogLevel() == "production" {
 		gin.SetMode(gin.ReleaseMode)
 	} else {
 		gin.SetMode(gin.DebugMode)
@@ -51,22 +53,47 @@ func InitializeUserRoutes(r *gin.Engine, connectionController *controller.Connec
 	}
 }
 
-func NewRouter(config config.GlobalConfig) *gin.Engine {
-	r := createRouterFromConfig(config)
+func InitializeSessionRoutes(r *gin.Engine, sessionController *controller.SessionController) {
+	sessionsGroup := r.Group("/sessions")
+	{
+		sessionsGroup.PUT("/:session_id/status/completed", sessionController.SetSessionStatusToCompleted)
+		sessionsGroup.PUT("/:session_id/status/timeout", sessionController.SetSessionStatusToTimeout)
+	}
+}
+
+func NewRouter(cfg *config.GlobalConfig, database *db.DB) *gin.Engine {
+	r := createRouterFromConfig(cfg)
 
 	slog.Info("Initializing Connection Service router")
 
 	// Initialize RabbitMQ middleware
-	middleware, err := middleware.NewMiddleware(config)
+	rabbitmqMiddleware, err := middleware.NewMiddleware(cfg)
 	if err != nil {
 		log.Fatalf("Failed to create RabbitMQ middleware: %v", err)
 	}
 
-	connectionService := service.NewConnectionService(middleware)
+	// Initialize RabbitMQ topology manager
+	tm := middleware.NewTopologyManager(cfg, rabbitmqMiddleware)
+
+	tm.GetMiddleware().DeclareExchange(config.CONNECTION_EXCHANGE, "fanout", true)
+
+	// Initialize session repository
+	sessionRepository := repository.NewSessionRepository(database)
+
+	// Initialize connection service
+	connectionService := service.NewConnectionService(rabbitmqMiddleware, tm, cfg, sessionRepository)
+
+	// Initialize session service
+	sessionService := service.NewSessionService(sessionRepository, tm)
+
+	// Initialize connection controller
 	connectionController := controller.NewConnectionController(connectionService)
 
+	// Initialize session controller
+	sessionController := controller.NewSessionController(sessionService)
+
 	// Initialize all routes
-	InitializeRoutes(r, connectionController)
+	InitializeRoutes(r, connectionController, sessionController)
 
 	// Swagger documentation
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
@@ -78,6 +105,8 @@ func NewRouter(config config.GlobalConfig) *gin.Engine {
 func InitializeRoutes(
 	r *gin.Engine,
 	connectionController *controller.ConnectionController,
+	sessionController *controller.SessionController,
 ) {
 	InitializeUserRoutes(r, connectionController)
+	InitializeSessionRoutes(r, sessionController)
 }

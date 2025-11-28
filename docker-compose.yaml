@@ -7,10 +7,37 @@ services:
       - tpp-network
     ports:
       - "${PORT}:${PORT}"
+    depends_on:
+      connections-db:
+        condition: service_healthy
     environment:
       - ENVIRONMENT=${ENVIRONMENT}
     volumes:
       - .:/app
+
+  connections-db:
+    image: postgres:15
+    container_name: connections-db
+    env_file: .env
+    networks:
+      - tpp-network
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASS}
+      - POSTGRES_DB=${POSTGRES_DB}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - connections-db-data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+
+volumes:
+  connections-db-data:
 
 networks:
   tpp-network:
