@@ -9,8 +9,8 @@ import (
 const (
 	CONNECTION_EXCHANGE             = "new_connections_exchange"
 	DISPATCHER_TO_CLIENT_QUEUE      = "%s_dispatcher_queue"
-	CLIENT_TO_CALIBRATION_QUEUE     = "%s_calibration_queue"
-	DISPATCHER_TO_CALIBRATION_QUEUE = "%s_labeled_queue"
+	CLIENT_TO_CALIBRATION_QUEUE     = "%s_outputs_cal_queue"
+	DISPATCHER_TO_CALIBRATION_QUEUE = "%s_inputs_cal_queue"
 )
 
 // Interface defines the configuration contract

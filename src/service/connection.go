@@ -113,7 +113,7 @@ func (s *ConnectionService) HandleClientConnection(ctx context.Context, UserID s
 	// Action 3: Notificar dispatcher service usando userData
 	slog.Info("Fetched user data", "user_id", UserID, "user_data", userData)
 
-	if err := s.NotifyNewConnection(userData.UserID, newSession.SessionID, userData.InputsFormat, userData.OutputsFormat, userData.ModelType); err != nil {
+	if err := s.NotifyNewConnection(userData.ID, newSession.SessionID, userData.InputsFormat, userData.OutputsFormat, userData.ModelType); err != nil {
 		return nil, schemas.NewInternalError(
 			fmt.Sprintf("failed to notify new connection: %v", err),
 			"/users/connect",
