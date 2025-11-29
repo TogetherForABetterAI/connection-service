@@ -182,13 +182,13 @@ func NewConfig() (*GlobalConfig, error) {
 		return nil, fmt.Errorf("POSTGRES_HOST environment variable is required")
 	}
 
-	postgresPortStr := os.Getenv("POSTGRES_INTERNAL_PORT")
+	postgresPortStr := os.Getenv("POSTGRES_PORT")
 	if postgresPortStr == "" {
-		return nil, fmt.Errorf("POSTGRES_INTERNAL_PORT environment variable is required")
+		return nil, fmt.Errorf("POSTGRES_PORT environment variable is required")
 	}
 	postgresPort, err := strconv.ParseInt(postgresPortStr, 10, 32)
 	if err != nil {
-		return nil, fmt.Errorf("POSTGRES_INTERNAL_PORT must be a valid integer: %w", err)
+		return nil, fmt.Errorf("POSTGRES_PORT must be a valid integer: %w", err)
 	}
 
 	postgresUser := os.Getenv("POSTGRES_USER")
