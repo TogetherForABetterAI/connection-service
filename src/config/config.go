@@ -196,9 +196,9 @@ func NewConfig() (*GlobalConfig, error) {
 		return nil, fmt.Errorf("POSTGRES_USER environment variable is required")
 	}
 
-	postgresPass := os.Getenv("POSTGRES_PASS")
+	postgresPass := os.Getenv("POSTGRES_PASSWORD")
 	if postgresPass == "" {
-		return nil, fmt.Errorf("POSTGRES_PASS environment variable is required")
+		return nil, fmt.Errorf("POSTGRES_PASSWORD environment variable is required")
 	}
 
 	postgresDB := os.Getenv("POSTGRES_DB")
