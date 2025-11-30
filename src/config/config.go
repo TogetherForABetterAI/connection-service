@@ -149,9 +149,9 @@ func NewConfig() (*GlobalConfig, error) {
 		return nil, fmt.Errorf("RABBITMQ_USER environment variable is required")
 	}
 
-	rabbitPass := os.Getenv("RABBITMQ_PASS")
+	rabbitPass := os.Getenv("RABBITMQ_PASSWORD")
 	if rabbitPass == "" {
-		return nil, fmt.Errorf("RABBITMQ_PASS environment variable is required")
+		return nil, fmt.Errorf("RABBITMQ_PASSWORD environment variable is required")
 	}
 
 	// Set log level from environment
