@@ -63,7 +63,7 @@ func (s *ConnectionService) HandleClientConnection(ctx context.Context, UserID s
 	if err != nil {
 		return nil, schemas.NewInternalError(
 			fmt.Sprintf("failed to query database: %v", err),
-			"/users/connect",
+			"/sessions/start",
 		)
 	}
 
@@ -95,7 +95,7 @@ func (s *ConnectionService) HandleClientConnection(ctx context.Context, UserID s
 	if err != nil {
 		return nil, schemas.NewInternalError(
 			fmt.Sprintf("failed to create session: %v", err),
-			"/users/connect",
+			"/sessions/start",
 		)
 	}
 
@@ -106,7 +106,7 @@ func (s *ConnectionService) HandleClientConnection(ctx context.Context, UserID s
 		slog.Error("Failed to setup RabbitMQ topology", "user_id", UserID, "error", err)
 		return nil, schemas.NewInternalError(
 			fmt.Sprintf("failed to setup RabbitMQ topology: %v", err),
-			"/users/connect",
+			"/sessions/start",
 		)
 	}
 
@@ -116,7 +116,7 @@ func (s *ConnectionService) HandleClientConnection(ctx context.Context, UserID s
 	if err := s.NotifyNewConnection(userData.ID, newSession.SessionID, userData.InputsFormat, userData.OutputsFormat, userData.ModelType); err != nil {
 		return nil, schemas.NewInternalError(
 			fmt.Sprintf("failed to notify new connection: %v", err),
-			"/users/connect",
+			"/sessions/start",
 		)
 	}
 
@@ -149,7 +149,7 @@ func (s *ConnectionService) validateConnection(token, userID string) (*schemas.U
 	if err != nil {
 		return nil, schemas.NewBadGatewayError(
 			fmt.Sprintf("failed to connect to users-service: %v", err),
-			"/users/connect",
+			"/sessions/start",
 		)
 	}
 	defer userResp.Body.Close()
@@ -162,14 +162,14 @@ func (s *ConnectionService) validateConnection(token, userID string) (*schemas.U
 			Title:    "User Not Found",
 			Status:   userResp.StatusCode,
 			Detail:   string(body),
-			Instance: "/users/connect",
+			Instance: "/sessions/start",
 		}
 	}
 	userInfo := schemas.UserInfo{}
 	if err := json.NewDecoder(userResp.Body).Decode(&userInfo); err != nil {
 		return nil, schemas.NewInternalError(
 			fmt.Sprintf("failed to decode user info response: %v", err),
-			"/users/connect",
+			"/sessions/start",
 		)
 	}
 
@@ -179,7 +179,7 @@ func (s *ConnectionService) validateConnection(token, userID string) (*schemas.U
 			Title:    "User Not Authorized",
 			Status:   http.StatusForbidden,
 			Detail:   "User is not authorized to connect",
-			Instance: "/users/connect",
+			Instance: "/sessions/start",
 		}
 	}
 
@@ -188,7 +188,7 @@ func (s *ConnectionService) validateConnection(token, userID string) (*schemas.U
 	if err != nil {
 		return nil, schemas.NewInternalError(
 			fmt.Sprintf("failed to marshal connection validation request: %v", err),
-			"/users/connect",
+			"/sessions/start",
 		)
 	}
 
@@ -196,7 +196,7 @@ func (s *ConnectionService) validateConnection(token, userID string) (*schemas.U
 	if err != nil {
 		return nil, schemas.NewBadGatewayError(
 			fmt.Sprintf("failed to connect to users-service: %v", err),
-			"/users/connect",
+			"/sessions/start",
 		)
 	}
 	defer validateTokenResp.Body.Close()
@@ -205,7 +205,7 @@ func (s *ConnectionService) validateConnection(token, userID string) (*schemas.U
 	if err != nil {
 		return nil, schemas.NewBadGatewayError(
 			"failed to read response from users-service",
-			"/users/connect",
+			"/sessions/start",
 		)
 	}
 	if validateTokenResp.StatusCode >= 500 {
@@ -213,7 +213,7 @@ func (s *ConnectionService) validateConnection(token, userID string) (*schemas.U
 		slog.Warn("Users-service returned server error", "status", validateTokenResp.StatusCode, "body", string(body))
 		return nil, schemas.NewBadGatewayError(
 			fmt.Sprintf("users-service returned status %d: %s", validateTokenResp.StatusCode, string(body)),
-			"/users/connect",
+			"/sessions/start",
 		)
 	}
 
@@ -229,7 +229,7 @@ func (s *ConnectionService) validateConnection(token, userID string) (*schemas.U
 				Title:    "Validation Failed",
 				Status:   validateTokenResp.StatusCode,
 				Detail:   legacyError.Detail,
-				Instance: "/users/connect",
+				Instance: "/sessions/start",
 			}
 		}
 
@@ -240,7 +240,7 @@ func (s *ConnectionService) validateConnection(token, userID string) (*schemas.U
 			Title:    "Validation Failed",
 			Status:   validateTokenResp.StatusCode,
 			Detail:   string(body),
-			Instance: "/users/connect",
+			Instance: "/sessions/start",
 		}
 	}
 

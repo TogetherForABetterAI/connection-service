@@ -99,9 +99,9 @@ const docTemplate = `{
                 }
             }
         },
-        "/users/connect": {
+        "/sessions/start": {
             "post": {
-                "description": "connect",
+                "description": "start session",
                 "consumes": [
                     "application/json"
                 ],
@@ -109,9 +109,9 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "users"
+                    "sessions"
                 ],
-                "summary": "connect",
+                "summary": "start session",
                 "parameters": [
                     {
                         "description": "Connect Request",

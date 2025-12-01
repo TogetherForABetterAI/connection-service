@@ -46,16 +46,10 @@ func createRouterFromConfig(config *config.GlobalConfig) *gin.Engine {
 	return r
 }
 
-func InitializeUserRoutes(r *gin.Engine, connectionController *controller.ConnectionController) {
-	usersGroup := r.Group("/users")
-	{
-		usersGroup.POST("/connect", connectionController.Connect)
-	}
-}
-
 func InitializeSessionRoutes(r *gin.Engine, sessionController *controller.SessionController) {
 	sessionsGroup := r.Group("/sessions")
 	{
+		sessionsGroup.POST("/start", sessionController.Start)
 		sessionsGroup.PUT("/:session_id/status/completed", sessionController.SetSessionStatusToCompleted)
 		sessionsGroup.PUT("/:session_id/status/timeout", sessionController.SetSessionStatusToTimeout)
 	}
@@ -86,14 +80,11 @@ func NewRouter(cfg *config.GlobalConfig, database *db.DB) *gin.Engine {
 	// Initialize session service
 	sessionService := service.NewSessionService(sessionRepository, tm)
 
-	// Initialize connection controller
-	connectionController := controller.NewConnectionController(connectionService)
-
 	// Initialize session controller
-	sessionController := controller.NewSessionController(sessionService)
+	sessionController := controller.NewSessionController(sessionService, connectionService)
 
 	// Initialize all routes
-	InitializeRoutes(r, connectionController, sessionController)
+	InitializeRoutes(r, sessionController)
 
 	// Swagger documentation
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
@@ -104,9 +95,7 @@ func NewRouter(cfg *config.GlobalConfig, database *db.DB) *gin.Engine {
 
 func InitializeRoutes(
 	r *gin.Engine,
-	connectionController *controller.ConnectionController,
 	sessionController *controller.SessionController,
 ) {
-	InitializeUserRoutes(r, connectionController)
 	InitializeSessionRoutes(r, sessionController)
 }

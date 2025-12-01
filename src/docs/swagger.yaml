@@ -155,11 +155,11 @@ paths:
       summary: get user by ID
       tags:
         - users
-  /users/connect:
+  /sessions/start:
     post:
       consumes:
         - application/json
-      description: connect
+      description: start session
       parameters:
         - description: Connect Request
           in: body
@@ -186,9 +186,9 @@ paths:
           description: Internal Server Error
           schema:
             $ref: "#/definitions/models.APIError"
-      summary: connect
+      summary: start session
       tags:
-        - users
+        - sessions
   /users/create:
     post:
       consumes:

@@ -2,6 +2,7 @@ package controller
 
 import (
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"connection-service/src/schemas"
@@ -11,13 +12,51 @@ import (
 )
 
 type SessionController struct {
-	Service *service.SessionService
+	Service           *service.SessionService
+	ConnectionService *service.ConnectionService
 }
 
-func NewSessionController(service *service.SessionService) *SessionController {
+func NewSessionController(service *service.SessionService, connectionService *service.ConnectionService) *SessionController {
 	return &SessionController{
-		Service: service,
+		Service:           service,
+		ConnectionService: connectionService,
 	}
+}
+
+// Start handles the client connection
+func (sc *SessionController) Start(ctx *gin.Context) {
+	var reqBody schemas.ConnectRequest
+	if err := ctx.ShouldBindJSON(&reqBody); err != nil {
+		slog.Error("Invalid JSON format", "error", err)
+		ctx.JSON(http.StatusBadRequest, schemas.NewBadRequestError(
+			"Invalid JSON format: "+err.Error(),
+			"/sessions/start",
+		))
+		return
+	}
+
+	// Delegate all business logic to the service layer
+	response, err := sc.ConnectionService.HandleClientConnection(ctx.Request.Context(), reqBody.UserID, reqBody.Token)
+	if err != nil {
+		// Check if the error is an ErrorResponse (from schemas)
+		var apiError *schemas.ErrorResponse
+		if errors.As(err, &apiError) {
+			slog.Error("Connection failed", "error", apiError, "user_id", reqBody.UserID, "status", apiError.Status)
+			ctx.JSON(apiError.Status, apiError)
+			return
+		}
+
+		// Unknown error - return 500 Internal Server Error
+		slog.Error("Internal error during connection", "error", err, "user_id", reqBody.UserID)
+		ctx.JSON(http.StatusInternalServerError, schemas.NewInternalError(
+			err.Error(),
+			"/sessions/start",
+		))
+		return
+	}
+
+	slog.Info("Client connected successfully", "user_id", reqBody.UserID)
+	ctx.JSON(http.StatusOK, response)
 }
 
 // SetSessionStatusToCompleted sets the session status to COMPLETED

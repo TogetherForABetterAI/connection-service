@@ -76,13 +76,13 @@
         }
       }
     },
-    "/users/connect": {
+    "/sessions/start": {
       "post": {
-        "description": "connect",
+        "description": "start session",
         "consumes": ["application/json"],
         "produces": ["application/json"],
-        "tags": ["users"],
-        "summary": "connect",
+        "tags": ["sessions"],
+        "summary": "start session",
         "parameters": [
           {
             "description": "Connect Request",
