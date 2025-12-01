@@ -1,6 +1,7 @@
 package service
 
 import (
+	"connection-service/src/config"
 	"connection-service/src/middleware"
 	"connection-service/src/models"
 	"connection-service/src/repository"
@@ -15,14 +16,16 @@ import (
 )
 
 type SessionService struct {
-	repo *repository.SessionRepository
-	tm   *middleware.RabbitMQTopologyManager
+	repo   *repository.SessionRepository
+	tm     *middleware.RabbitMQTopologyManager
+	config *config.GlobalConfig
 }
 
-func NewSessionService(repo *repository.SessionRepository, tm *middleware.RabbitMQTopologyManager) *SessionService {
+func NewSessionService(repo *repository.SessionRepository, tm *middleware.RabbitMQTopologyManager, cfg *config.GlobalConfig) *SessionService {
 	return &SessionService{
-		repo: repo,
-		tm:   tm,
+		repo:   repo,
+		tm:     tm,
+		config: cfg,
 	}
 }
 
@@ -125,7 +128,7 @@ func (s *SessionService) SetSessionStatusToTimeout(ctx context.Context, sessionI
 // RevokeAuthorization revokes user authorization in users-service
 // Implements smart propagation: 4xx errors are propagated, 5xx/network errors return 502
 func (s *SessionService) RevokeAuthorization(userID, sessionID string) error {
-	url := fmt.Sprintf("http://users-service:8000/users/%s/status", userID)
+	url := fmt.Sprintf("%s/users/%s/status", s.config.GetUsersServiceURL(), userID)
 	body := `{"is_authorized": false}`
 	instance := "/sessions/" + sessionID + "/status/completed"
 

@@ -29,6 +29,7 @@ type GlobalConfig struct {
 	podName          string
 	host             string
 	port             string
+	usersServiceURL  string
 	middlewareConfig *MiddlewareConfig
 	databaseConfig   *DatabaseConfig
 }
@@ -74,6 +75,10 @@ func (c *GlobalConfig) GetMiddlewareConfig() *MiddlewareConfig {
 
 func (c *GlobalConfig) GetDatabaseConfig() *DatabaseConfig {
 	return c.databaseConfig
+}
+
+func (c *GlobalConfig) GetUsersServiceURL() string {
+	return c.usersServiceURL
 }
 
 // Getters for DatabaseConfig
@@ -176,6 +181,12 @@ func NewConfig() (*GlobalConfig, error) {
 		return nil, fmt.Errorf("PORT environment variable is required")
 	}
 
+	// Get Users Service URL from environment
+	usersServiceURL := os.Getenv("USERS_SERVICE_URL")
+	if usersServiceURL == "" {
+		return nil, fmt.Errorf("USERS_SERVICE_URL environment variable is required")
+	}
+
 	// Get PostgreSQL connection details from environment
 	postgresHost := os.Getenv("POSTGRES_HOST")
 	if postgresHost == "" {
@@ -229,6 +240,7 @@ func NewConfig() (*GlobalConfig, error) {
 		podName:          podName,
 		host:             host,
 		port:             port,
+		usersServiceURL:  usersServiceURL,
 		middlewareConfig: middlewareConfig,
 		databaseConfig:   databaseConfig,
 	}, nil

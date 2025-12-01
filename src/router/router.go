@@ -78,7 +78,7 @@ func NewRouter(cfg *config.GlobalConfig, database *db.DB) *gin.Engine {
 	connectionService := service.NewConnectionService(rabbitmqMiddleware, tm, cfg, sessionRepository)
 
 	// Initialize session service
-	sessionService := service.NewSessionService(sessionRepository, tm)
+	sessionService := service.NewSessionService(sessionRepository, tm, cfg)
 
 	// Initialize session controller
 	sessionController := controller.NewSessionController(sessionService, connectionService)

@@ -145,7 +145,7 @@ func (s *ConnectionService) generateCredentials(UserID string) *schemas.RabbitMQ
 // Ahora devuelve los datos del usuario si la validación es exitosa
 func (s *ConnectionService) validateConnection(token, userID string) (*schemas.UserInfo, error) {
 	// User Validation
-	userResp, err := http.Get(fmt.Sprintf("http://users-service:8000/users/%s", userID))
+	userResp, err := http.Get(fmt.Sprintf("%s/users/%s", s.Config.GetUsersServiceURL(), userID))
 	if err != nil {
 		return nil, schemas.NewBadGatewayError(
 			fmt.Sprintf("failed to connect to users-service: %v", err),
@@ -192,7 +192,7 @@ func (s *ConnectionService) validateConnection(token, userID string) (*schemas.U
 		)
 	}
 
-	validateTokenResp, err := http.Post("http://users-service:8000/tokens/validate", "application/json", bytes.NewBuffer(postBody))
+	validateTokenResp, err := http.Post(fmt.Sprintf("%s/tokens/validate", s.Config.GetUsersServiceURL()), "application/json", bytes.NewBuffer(postBody))
 	if err != nil {
 		return nil, schemas.NewBadGatewayError(
 			fmt.Sprintf("failed to connect to users-service: %v", err),
