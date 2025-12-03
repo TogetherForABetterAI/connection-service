@@ -14,4 +14,4 @@ WORKDIR /app
 COPY --from=builder /app/src/app-binary /app/connection-service
 COPY --from=builder /app/init.sql /app/init.sql
 
-CMD ["/app/connection-service"]
+CMD ["/connection-service"]
