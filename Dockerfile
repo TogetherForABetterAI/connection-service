@@ -11,7 +11,7 @@ RUN go build -o app-binary main.go
 
 FROM alpine:latest
 WORKDIR /app
-COPY --from=builder /app/src/app-binary /app/connection-service
+COPY --from=builder /app/src/app-binary /connection-service
 COPY --from=builder /app/init.sql /app/init.sql
 
 CMD ["/connection-service"]
