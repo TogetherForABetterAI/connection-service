@@ -10,6 +10,8 @@ WORKDIR /app/src
 RUN go build -o app-binary main.go
 
 FROM alpine:latest
-COPY --from=builder /app/src/app-binary /auth-gateway
+WORKDIR /app
+COPY --from=builder /app/src/app-binary /app/connection-service
+COPY --from=builder /app/init.sql /app/init.sql
 
-CMD ["/auth-gateway"]
+CMD ["/app/connection-service"]
