@@ -104,6 +104,7 @@ func (s *ConnectionService) HandleClientConnection(ctx context.Context, UserID s
 	// Action 2: Set up RabbitMQ topology
 	if err := s.TopologyManager.SetUpTopologyFor(UserID, credentials.Password); err != nil {
 		slog.Error("Failed to setup RabbitMQ topology", "user_id", UserID, "error", err)
+		s.SessionRepository.DeleteSession(ctx, newSession.SessionID)
 		return nil, schemas.NewInternalError(
 			fmt.Sprintf("failed to setup RabbitMQ topology: %v", err),
 			"/sessions/start",
@@ -114,6 +115,9 @@ func (s *ConnectionService) HandleClientConnection(ctx context.Context, UserID s
 	slog.Info("Fetched user data", "user_id", UserID, "user_data", userData)
 
 	if err := s.NotifyNewConnection(userData.ID, newSession.SessionID, userData.InputsFormat, userData.OutputsFormat, userData.ModelType); err != nil {
+		slog.Error("Failed to notify new connection", "user_id", UserID, "session_id", newSession.SessionID, "error", err)
+		s.TopologyManager.DeleteTopologyFor(UserID)
+		s.SessionRepository.DeleteSession(ctx, newSession.SessionID)
 		return nil, schemas.NewInternalError(
 			fmt.Sprintf("failed to notify new connection: %v", err),
 			"/sessions/start",

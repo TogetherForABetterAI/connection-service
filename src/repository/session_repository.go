@@ -201,3 +201,27 @@ func (r *SessionRepository) GetSessionStatus(ctx context.Context, sessionID stri
 	}
 	return status, nil
 }
+
+// DeleteSession deletes a session by session ID
+// Just used in case of rollback during connection setup
+func (r *SessionRepository) DeleteSession(ctx context.Context, sessionID string) error {
+	query := `DELETE FROM client_sessions WHERE session_id = $1`
+
+	result, err := r.db.GetConnection().ExecContext(ctx, query, sessionID)
+	if err != nil {
+		return fmt.Errorf("failed to delete session: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		slog.Warn("Attempted to delete non-existent session", "session_id", sessionID)
+		return nil // Don't fail if session doesn't exist (already deleted or never created)
+	}
+
+	slog.Info("Deleted session", "session_id", sessionID)
+	return nil
+}
