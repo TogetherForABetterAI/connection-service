@@ -74,6 +74,9 @@ func NewMiddleware(config *config.GlobalConfig) (*Middleware, error) {
 }
 
 func (m *Middleware) DeclareQueue(queueName string, durable bool) error {
+	if err := m.ensureConnection(); err != nil {
+		return fmt.Errorf("failed to ensure connection: %w", err)
+	}
 	_, err := m.channel.QueueDeclare(
 		queueName, // name
 		durable,   // durable
@@ -86,6 +89,9 @@ func (m *Middleware) DeclareQueue(queueName string, durable bool) error {
 }
 
 func (m *Middleware) DeclareExchange(exchangeName string, exchangeType string, durable bool) error {
+	if err := m.ensureConnection(); err != nil {
+		return fmt.Errorf("failed to ensure connection: %w", err)
+	}
 	return m.channel.ExchangeDeclare(
 		exchangeName,
 		exchangeType,
@@ -98,6 +104,9 @@ func (m *Middleware) DeclareExchange(exchangeName string, exchangeType string, d
 }
 
 func (m *Middleware) BindQueue(queueName, exchangeName, routingKey string) error {
+	if err := m.ensureConnection(); err != nil {
+		return fmt.Errorf("failed to ensure connection: %w", err)
+	}
 	return m.channel.QueueBind(
 		queueName,
 		routingKey,
@@ -109,6 +118,9 @@ func (m *Middleware) BindQueue(queueName, exchangeName, routingKey string) error
 
 // Publish method compatible with Publisher interface
 func (m *Middleware) Publish(exchange string, body []byte) error {
+	if err := m.ensureConnection(); err != nil {
+		return fmt.Errorf("failed to ensure connection: %w", err)
+	}
 	return m.PublishWithRouting("", body, exchange)
 }
 
@@ -148,38 +160,6 @@ func (m *Middleware) PublishWithRouting(routingKey string, message []byte, excha
 	return fmt.Errorf("failed to publish message to exchange %s after %d attempts", exchangeName, MAX_RETRIES)
 }
 
-func (m *Middleware) BasicConsume(queueName string, callback func(amqp.Delivery)) error {
-	msgs, err := m.channel.Consume(
-		queueName,
-		"",    // consumer
-		false, // autoAck
-		false, // exclusive
-		false, // noLocal
-		false, // noWait
-		nil,   // args
-	)
-	if err != nil {
-		return err
-	}
-
-	go func() {
-		for msg := range msgs {
-			func(m amqp.Delivery) {
-				defer func() {
-					if r := recover(); r != nil {
-						log.Printf("action: rabbitmq_callback | result: fail | error: %v\n", r)
-						_ = m.Nack(false, true)
-					}
-				}()
-				callback(m)
-				_ = m.Ack(false)
-			}(msg)
-		}
-	}()
-
-	return nil
-}
-
 func (m *Middleware) Close() {
 	if err := m.channel.Close(); err != nil {
 		log.Printf("action: rabbitmq_channel_close | result: fail | error: %v", err)
@@ -191,6 +171,9 @@ func (m *Middleware) Close() {
 
 // DeleteQueue deletes a RabbitMQ queue
 func (m *Middleware) DeleteQueue(queueName string) error {
+	if err := m.ensureConnection(); err != nil {
+		return fmt.Errorf("failed to ensure connection: %w", err)
+	}
 	_, err := m.channel.QueueDelete(
 		queueName, // name
 		false,     // ifUnused
@@ -338,5 +321,35 @@ func (m *Middleware) DeleteUser(username string) error {
 	}
 
 	slog.Info("Deleted User", "username", username)
+	return nil
+}
+
+func (m *Middleware) ensureConnection() error {
+	if m.conn != nil && !m.conn.IsClosed() && m.channel != nil {
+		return nil // All good
+	}
+
+	slog.Info("RabbitMQ connection lost, reconnecting...")
+
+	middlewareConfig := m.config.GetMiddlewareConfig()
+	url := fmt.Sprintf("amqp://%s:%s@%s:%d/",
+		middlewareConfig.GetUsername(), middlewareConfig.GetPassword(),
+		middlewareConfig.GetHost(), middlewareConfig.GetPort())
+
+	newConn, err := amqp.Dial(url)
+	if err != nil {
+		return fmt.Errorf("failed to reconnect to RabbitMQ: %w", err)
+	}
+
+	newCh, err := newConn.Channel()
+	if err != nil {
+		newConn.Close()
+		return fmt.Errorf("failed to create new channel: %w", err)
+	}
+
+	m.conn = newConn
+	m.channel = newCh
+
+	slog.Info("Reconnected to RabbitMQ successfully")
 	return nil
 }
