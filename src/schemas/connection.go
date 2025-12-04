@@ -28,6 +28,7 @@ type RabbitMQCredentials struct {
 type NotifyNewConnection struct {
 	UserID        string `json:"user_id"`
 	SessionId     string `json:"session_id"`
+	Email         string `json:"email"`
 	InputsFormat  string `json:"inputs_format"`
 	OutputsFormat string `json:"outputs_format"`
 	ModelType     string `json:"model_type"`

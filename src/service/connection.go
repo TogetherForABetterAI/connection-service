@@ -31,13 +31,14 @@ func NewConnectionService(publisher middleware.Publisher, topologyManager *middl
 	}
 }
 
-func (s *ConnectionService) NotifyNewConnection(UserID, sessionId, inputsFormat, outputsFormat, modelType string) error {
+func (s *ConnectionService) NotifyNewConnection(UserID, sessionId, email, inputsFormat, outputsFormat, modelType string) error {
 
 	exchangeName := config.CONNECTION_EXCHANGE
 
 	notification := schemas.NotifyNewConnection{
 		UserID:        UserID,
 		SessionId:     sessionId,
+		Email:         email,
 		InputsFormat:  inputsFormat,
 		OutputsFormat: outputsFormat,
 		ModelType:     modelType,
@@ -114,7 +115,7 @@ func (s *ConnectionService) HandleClientConnection(ctx context.Context, UserID s
 	// Action 3: Notificar dispatcher service usando userData
 	slog.Info("Fetched user data", "user_id", UserID, "user_data", userData)
 
-	if err := s.NotifyNewConnection(userData.ID, newSession.SessionID, userData.InputsFormat, userData.OutputsFormat, userData.ModelType); err != nil {
+	if err := s.NotifyNewConnection(userData.ID, newSession.SessionID, userData.Email, userData.InputsFormat, userData.OutputsFormat, userData.ModelType); err != nil {
 		slog.Error("Failed to notify new connection", "user_id", UserID, "session_id", newSession.SessionID, "error", err)
 		s.TopologyManager.DeleteTopologyFor(UserID)
 		s.SessionRepository.DeleteSession(ctx, newSession.SessionID)
