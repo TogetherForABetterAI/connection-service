@@ -12,8 +12,6 @@ services:
         condition: service_healthy
     environment:
       - ENVIRONMENT=${ENVIRONMENT}
-    volumes:
-      - .:/app
 
   connections-db:
     image: postgres:15
