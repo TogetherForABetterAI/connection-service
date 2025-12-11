@@ -5,6 +5,7 @@
 CREATE TABLE IF NOT EXISTS client_sessions (
     session_id VARCHAR(255) PRIMARY KEY,
     user_id VARCHAR(255) NOT NULL,
+    token_id VARCHAR(255),
     session_status VARCHAR(50) NOT NULL CHECK (session_status IN ('IN_PROGRESS', 'COMPLETED', 'TIMEOUT')),
     dispatcher_status VARCHAR(50),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,

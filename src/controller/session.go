@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	"connection-service/src/config"
 	"connection-service/src/schemas"
 	"connection-service/src/service"
 
@@ -14,12 +15,14 @@ import (
 type SessionController struct {
 	Service           *service.SessionService
 	ConnectionService *service.ConnectionService
+	Config            *config.GlobalConfig
 }
 
-func NewSessionController(service *service.SessionService, connectionService *service.ConnectionService) *SessionController {
+func NewSessionController(service *service.SessionService, connectionService *service.ConnectionService, config *config.GlobalConfig) *SessionController {
 	return &SessionController{
 		Service:           service,
 		ConnectionService: connectionService,
+		Config:            config,
 	}
 }
 

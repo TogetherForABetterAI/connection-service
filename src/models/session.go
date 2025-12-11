@@ -15,6 +15,7 @@ const (
 type Session struct {
 	SessionID        string        `json:"session_id"`
 	UserID           string        `json:"user_id"`
+	TokenID          string        `json:"token_id"`
 	SessionStatus    SessionStatus `json:"session_status"`
 	DispatcherStatus string        `json:"dispatcher_status"`
 	CreatedAt        time.Time     `json:"created_at"`

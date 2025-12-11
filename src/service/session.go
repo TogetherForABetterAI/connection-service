@@ -74,6 +74,10 @@ func (s *SessionService) SetSessionStatusToCompleted(ctx context.Context, sessio
 		return err
 	}
 
+	if err := s.RevokeToken(session.UserID, session.TokenID); err != nil {
+		return err
+	}
+
 	s.tm.DeleteTopologyFor(session.UserID)
 
 	return nil
@@ -123,6 +127,66 @@ func (s *SessionService) SetSessionStatusToTimeout(ctx context.Context, sessionI
 	s.tm.DeleteTopologyFor(session.UserID)
 
 	return nil
+}
+
+func (s *SessionService) RevokeToken(userID, tokenID string) error {
+	url := fmt.Sprintf("%s/tokens/revoke/%s?user_id=%s", s.config.GetUsersServiceURL(), tokenID, userID)
+	instance := "/tokens/revoke/" + tokenID
+
+	req, err := http.NewRequest(http.MethodDelete, url, nil)
+	if err != nil {
+		// Network error - return 502 Bad Gateway
+		return schemas.NewBadGatewayError(
+			fmt.Sprintf("failed to connect to users-service: %v", err),
+			instance,
+		)
+	}
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+
+	if err != nil {
+		return fmt.Errorf("failed to execute request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	// Read response body for error details
+	bodyBytes, readErr := io.ReadAll(resp.Body)
+	if readErr != nil {
+		return schemas.NewBadGatewayError(
+			"failed to read response from users-service",
+			instance,
+		)
+	}
+
+	// Success case
+	if resp.StatusCode == http.StatusNoContent {
+		return nil
+	}
+
+	// Handle 4xx client errors - propagate them
+	if resp.StatusCode >= 400 && resp.StatusCode < 500 {
+		// Try to decode the error response from the remote service
+		var remoteError schemas.ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &remoteError); err == nil {
+			// Successfully decoded remote error - propagate it
+			return &remoteError
+		}
+		// Could not decode - return a generic error with the status code
+		return &schemas.ErrorResponse{
+			Type:     "https://connection-service.com/external-service-error",
+			Title:    "External Service Error",
+			Status:   resp.StatusCode,
+			Detail:   fmt.Sprintf("users-service returned error: %s", string(bodyBytes)),
+			Instance: instance,
+		}
+	}
+
+	// Handle 5xx server errors - return 502 Bad Gateway
+	return schemas.NewBadGatewayError(
+		fmt.Sprintf("users-service returned status %d: %s", resp.StatusCode, string(bodyBytes)),
+		instance,
+	)
 }
 
 // RevokeAuthorization revokes user authorization in users-service

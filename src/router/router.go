@@ -81,7 +81,7 @@ func NewRouter(cfg *config.GlobalConfig, database *db.DB) *gin.Engine {
 	sessionService := service.NewSessionService(sessionRepository, tm, cfg)
 
 	// Initialize session controller
-	sessionController := controller.NewSessionController(sessionService, connectionService)
+	sessionController := controller.NewSessionController(sessionService, connectionService, cfg)
 
 	// Initialize all routes
 	InitializeRoutes(r, sessionController)
