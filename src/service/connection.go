@@ -54,7 +54,7 @@ func (s *ConnectionService) NotifyNewConnection(UserID, sessionId, email, inputs
 // Returns (response, error) following idiomatic Go error handling
 func (s *ConnectionService) HandleClientConnection(ctx context.Context, UserID string, token string) (*schemas.ConnectResponse, error) {
 	// Step 1: Validate Connection y obtener datos del usuario
-	userData, err := s.validateConnection(token, UserID)
+	userData, tokenID, err := s.validateConnection(token, UserID)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +92,7 @@ func (s *ConnectionService) HandleClientConnection(ctx context.Context, UserID s
 	slog.Info("Creating new session for client", "user_id", UserID)
 
 	// Action 1: Create new session in database
-	newSession, err := s.SessionRepository.CreateSession(ctx, UserID)
+	newSession, err := s.SessionRepository.CreateSession(ctx, UserID, tokenID)
 	if err != nil {
 		return nil, schemas.NewInternalError(
 			fmt.Sprintf("failed to create session: %v", err),
@@ -148,11 +148,11 @@ func (s *ConnectionService) generateCredentials(UserID string) *schemas.RabbitMQ
 
 // validateConnection validates a client connection with the users-service
 // Ahora devuelve los datos del usuario si la validación es exitosa
-func (s *ConnectionService) validateConnection(token, userID string) (*schemas.UserInfo, error) {
+func (s *ConnectionService) validateConnection(token, userID string) (*schemas.UserInfo, string, error) {
 	// User Validation
 	userResp, err := http.Get(fmt.Sprintf("%s/users/%s", s.Config.GetUsersServiceURL(), userID))
 	if err != nil {
-		return nil, schemas.NewBadGatewayError(
+		return nil, "", schemas.NewBadGatewayError(
 			fmt.Sprintf("failed to connect to users-service: %v", err),
 			"/sessions/start",
 		)
@@ -162,7 +162,7 @@ func (s *ConnectionService) validateConnection(token, userID string) (*schemas.U
 	if userResp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(userResp.Body)
 		slog.Warn("Failed to fetch user data", "user_id", userID, "status", userResp.StatusCode, "body", string(body))
-		return nil, &schemas.ErrorResponse{
+		return nil, "", &schemas.ErrorResponse{
 			Type:     "https://connection-service.com/external-service-error",
 			Title:    "User Not Found",
 			Status:   userResp.StatusCode,
@@ -172,14 +172,14 @@ func (s *ConnectionService) validateConnection(token, userID string) (*schemas.U
 	}
 	userInfo := schemas.UserInfo{}
 	if err := json.NewDecoder(userResp.Body).Decode(&userInfo); err != nil {
-		return nil, schemas.NewInternalError(
+		return nil, "", schemas.NewInternalError(
 			fmt.Sprintf("failed to decode user info response: %v", err),
 			"/sessions/start",
 		)
 	}
 
 	if !userInfo.IsAuthorized {
-		return nil, &schemas.ErrorResponse{
+		return nil, "", &schemas.ErrorResponse{
 			Type:     "https://connection-service.com/unauthorized",
 			Title:    "User Not Authorized",
 			Status:   http.StatusForbidden,
@@ -191,7 +191,7 @@ func (s *ConnectionService) validateConnection(token, userID string) (*schemas.U
 	// Token Validation
 	postBody, err := json.Marshal(map[string]string{"token": token, "user_id": userID})
 	if err != nil {
-		return nil, schemas.NewInternalError(
+		return nil, "", schemas.NewInternalError(
 			fmt.Sprintf("failed to marshal connection validation request: %v", err),
 			"/sessions/start",
 		)
@@ -199,7 +199,7 @@ func (s *ConnectionService) validateConnection(token, userID string) (*schemas.U
 
 	validateTokenResp, err := http.Post(fmt.Sprintf("%s/tokens/validate", s.Config.GetUsersServiceURL()), "application/json", bytes.NewBuffer(postBody))
 	if err != nil {
-		return nil, schemas.NewBadGatewayError(
+		return nil, "", schemas.NewBadGatewayError(
 			fmt.Sprintf("failed to connect to users-service: %v", err),
 			"/sessions/start",
 		)
@@ -208,7 +208,7 @@ func (s *ConnectionService) validateConnection(token, userID string) (*schemas.U
 
 	body, err := io.ReadAll(validateTokenResp.Body)
 	if err != nil {
-		return nil, schemas.NewBadGatewayError(
+		return nil, "", schemas.NewBadGatewayError(
 			"failed to read response from users-service",
 			"/sessions/start",
 		)
@@ -216,7 +216,7 @@ func (s *ConnectionService) validateConnection(token, userID string) (*schemas.U
 	if validateTokenResp.StatusCode >= 500 {
 		// Handle 5xx server errors - return 502 Bad Gateway
 		slog.Warn("Users-service returned server error", "status", validateTokenResp.StatusCode, "body", string(body))
-		return nil, schemas.NewBadGatewayError(
+		return nil, "", schemas.NewBadGatewayError(
 			fmt.Sprintf("users-service returned status %d: %s", validateTokenResp.StatusCode, string(body)),
 			"/sessions/start",
 		)
@@ -229,7 +229,7 @@ func (s *ConnectionService) validateConnection(token, userID string) (*schemas.U
 			Detail string `json:"detail"`
 		}
 		if err := json.Unmarshal(body, &legacyError); err == nil && legacyError.Detail != "" {
-			return nil, &schemas.ErrorResponse{
+			return nil, "", &schemas.ErrorResponse{
 				Type:     "https://connection-service.com/external-service-error",
 				Title:    "Validation Failed",
 				Status:   validateTokenResp.StatusCode,
@@ -240,7 +240,7 @@ func (s *ConnectionService) validateConnection(token, userID string) (*schemas.U
 
 		// Could not decode - return a generic error with the status code
 		slog.Warn("Connection validation failed", "user_id", userID, "status", validateTokenResp.StatusCode, "body", string(body))
-		return nil, &schemas.ErrorResponse{
+		return nil, "", &schemas.ErrorResponse{
 			Type:     "https://connection-service.com/external-service-error",
 			Title:    "Validation Failed",
 			Status:   validateTokenResp.StatusCode,
@@ -248,6 +248,13 @@ func (s *ConnectionService) validateConnection(token, userID string) (*schemas.U
 			Instance: "/sessions/start",
 		}
 	}
+	tokenInfo := schemas.TokenInfo{}
+	if err := json.NewDecoder(bytes.NewReader(body)).Decode(&tokenInfo); err != nil {
+		return nil, "", schemas.NewInternalError(
+			fmt.Sprintf("failed to decode token info response: %v", err),
+			"/sessions/start",
+		)
+	}
 
-	return &userInfo, nil
+	return &userInfo, tokenInfo.TokenID, nil
 }

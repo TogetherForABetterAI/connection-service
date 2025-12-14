@@ -28,7 +28,7 @@ func NewSessionRepository(database *db.DB) *SessionRepository {
 
 func (r *SessionRepository) GetSessionByID(ctx context.Context, sessionID string) (*models.Session, error) {
 	query := `
-		SELECT session_id, user_id, session_status, dispatcher_status, 
+		SELECT session_id, user_id, token_id, session_status, dispatcher_status, 
 		       created_at, completed_at
 		FROM client_sessions
 		WHERE session_id = $1
@@ -38,6 +38,7 @@ func (r *SessionRepository) GetSessionByID(ctx context.Context, sessionID string
 	err := r.db.GetConnection().QueryRowContext(ctx, query, sessionID).Scan(
 		&session.SessionID,
 		&session.UserID,
+		&session.TokenID,
 		&session.SessionStatus,
 		&session.DispatcherStatus,
 		&session.CreatedAt,
@@ -57,7 +58,7 @@ func (r *SessionRepository) GetSessionByID(ctx context.Context, sessionID string
 // GetActiveSession retrieves an active session for a given User ID
 func (r *SessionRepository) GetActiveSession(ctx context.Context, UserID string) (*models.Session, error) {
 	query := `
-		SELECT session_id, user_id, session_status, dispatcher_status, 
+		SELECT session_id, user_id, token_id, session_status, dispatcher_status, 
 		       created_at, completed_at
 		FROM client_sessions
 		WHERE user_id = $1 AND session_status = $2
@@ -69,6 +70,7 @@ func (r *SessionRepository) GetActiveSession(ctx context.Context, UserID string)
 	err := r.db.GetConnection().QueryRowContext(ctx, query, UserID, models.StatusInProgress).Scan(
 		&session.SessionID,
 		&session.UserID,
+		&session.TokenID,
 		&session.SessionStatus,
 		&session.DispatcherStatus,
 		&session.CreatedAt,
@@ -92,15 +94,15 @@ func (r *SessionRepository) GetActiveSession(ctx context.Context, UserID string)
 }
 
 // CreateSession creates a new session for a client
-func (r *SessionRepository) CreateSession(ctx context.Context, UserID string) (*models.Session, error) {
+func (r *SessionRepository) CreateSession(ctx context.Context, UserID string, tokenID string) (*models.Session, error) {
 	sessionID := uuid.New().String()
 	now := time.Now()
 
 	query := `
 		INSERT INTO client_sessions 
-		(session_id, user_id, session_status, dispatcher_status, created_at)
-		VALUES ($1, $2, $3, $4, $5)
-		RETURNING session_id, user_id, session_status, dispatcher_status, 
+		(session_id, user_id, token_id, session_status, dispatcher_status, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6)
+		RETURNING session_id, user_id, token_id, session_status, dispatcher_status, 
 		          created_at, completed_at
 	`
 
@@ -110,12 +112,14 @@ func (r *SessionRepository) CreateSession(ctx context.Context, UserID string) (*
 		query,
 		sessionID,
 		UserID,
+		tokenID,
 		models.StatusInProgress,
 		"PENDING", // dispatcher_status
 		now,       // created_at
 	).Scan(
 		&session.SessionID,
 		&session.UserID,
+		&session.TokenID,
 		&session.SessionStatus,
 		&session.DispatcherStatus,
 		&session.CreatedAt,
@@ -158,6 +162,34 @@ func (r *SessionRepository) UpdateSessionStatus(ctx context.Context, sessionID s
 	slog.Info("Updated session status",
 		"session_id", sessionID,
 		"status", status)
+
+	return nil
+}
+
+// SetSessionStatusToCompleted updates the session status to COMPLETED and sets completed_at
+func (r *SessionRepository) SetSessionStatusToCompleted(ctx context.Context, sessionID string) error {
+	query := `
+		UPDATE client_sessions
+		SET session_status = $1, completed_at = $2
+		WHERE session_id = $3
+	`
+
+	result, err := r.db.GetConnection().ExecContext(ctx, query, models.StatusCompleted, time.Now(), sessionID)
+	if err != nil {
+		return fmt.Errorf("failed to update session status to completed: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("update session %s: %w", sessionID, models.ErrSessionNotFound)
+	}
+
+	slog.Info("Updated session status to COMPLETED",
+		"session_id", sessionID)
 
 	return nil
 }
