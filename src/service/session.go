@@ -78,6 +78,12 @@ func (s *SessionService) SetSessionStatusToCompleted(ctx context.Context, sessio
 		return err
 	}
 
+	// Actualizo el lead_time (antes era nulo porque la sesión estaba en progreso)
+	leadTime := session.CompletedAt.Sub(session.CreatedAt).Seconds()
+	if err := s.LogSessionCompletion(session.TokenID, int(leadTime)); err != nil {
+		return err
+	}
+
 	s.tm.DeleteTopologyFor(session.UserID)
 
 	return nil
@@ -127,6 +133,51 @@ func (s *SessionService) SetSessionStatusToTimeout(ctx context.Context, sessionI
 	s.tm.DeleteTopologyFor(session.UserID)
 
 	return nil
+}
+
+func (s *SessionService) LogSessionCompletion(tokenID string, leadTime int) error {
+	url := fmt.Sprintf("%s/tokens/%s/update-leadtime?seconds=%d", s.config.GetUsersServiceURL(), tokenID, leadTime)
+	instance := "/tokens/" + tokenID + "/update-leadtime"
+
+	req, err := http.NewRequest(http.MethodPatch, url, nil)
+	if err != nil {
+		return schemas.NewBadGatewayError(
+			fmt.Sprintf("failed to connect to users-service: %v", err),
+			instance,
+		)
+	}
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+
+	if err != nil {
+		return fmt.Errorf("failed to execute request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	bodyBytes, readErr := io.ReadAll(resp.Body)
+	if readErr != nil {
+		return schemas.NewBadGatewayError(
+			"failed to read response from users-service",
+			instance,
+		)
+	}
+
+	if resp.StatusCode == http.StatusOK {
+		return nil
+	}
+
+	var remoteError schemas.ErrorResponse
+	if err := json.Unmarshal(bodyBytes, &remoteError); err == nil {
+		return &remoteError
+	}
+	return &schemas.ErrorResponse{
+		Type:     "https://connection-service.com/external-service-error",
+		Title:    "External Service Error",
+		Status:   resp.StatusCode,
+		Detail:   fmt.Sprintf("users-service returned error: %s", string(bodyBytes)),
+		Instance: instance,
+	}
 }
 
 func (s *SessionService) RevokeToken(userID, tokenID string) error {

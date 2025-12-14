@@ -70,6 +70,7 @@ func (r *SessionRepository) GetActiveSession(ctx context.Context, UserID string)
 	err := r.db.GetConnection().QueryRowContext(ctx, query, UserID, models.StatusInProgress).Scan(
 		&session.SessionID,
 		&session.UserID,
+		&session.TokenID,
 		&session.SessionStatus,
 		&session.DispatcherStatus,
 		&session.CreatedAt,
