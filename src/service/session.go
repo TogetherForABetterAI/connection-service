@@ -79,10 +79,10 @@ func (s *SessionService) SetSessionStatusToCompleted(ctx context.Context, sessio
 	}
 
 	// Actualizo el lead_time (antes era nulo porque la sesión estaba en progreso)
-	leadTime := session.CompletedAt.Sub(session.CreatedAt).Seconds()
-	if err := s.LogSessionCompletion(session.TokenID, int(leadTime)); err != nil {
-		return err
-	}
+	// leadTime := session.CompletedAt.Sub(session.CreatedAt).Seconds()
+	// if err := s.LogSessionCompletion(session.TokenID, int(leadTime)); err != nil {
+	// 	return err
+	// }
 
 	s.tm.DeleteTopologyFor(session.UserID)
 
