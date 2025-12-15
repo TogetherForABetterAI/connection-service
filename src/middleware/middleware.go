@@ -3,6 +3,7 @@ package middleware
 import (
 	"bytes"
 	"connection-service/src/config"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -20,6 +21,8 @@ type Middleware struct {
 	channel       *amqp.Channel
 	confirms_chan chan amqp.Confirmation
 	config        *config.GlobalConfig
+	ctx           context.Context
+	cancel        context.CancelFunc
 }
 
 const MAX_RETRIES = 5
@@ -31,30 +34,25 @@ type Publisher interface {
 
 func NewMiddleware(config *config.GlobalConfig) (*Middleware, error) {
 	middlewareConfig := config.GetMiddlewareConfig()
-	url := fmt.Sprintf("amqp://%s:%s@%s:%d/",
-		middlewareConfig.GetUsername(),
-		middlewareConfig.GetPassword(),
-		middlewareConfig.GetHost(),
-		middlewareConfig.GetPort())
+	ctx, cancel := context.WithCancel(context.Background())
+	m := &Middleware{
+		config: config,
+		ctx:    ctx,
+		cancel: cancel,
+	}
 
-	conn, err := amqp.Dial(url)
+	err := m.Connect(middlewareConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to RabbitMQ: %w", err)
 	}
 
-	ch, err := conn.Channel()
-	if err != nil {
-		conn.Close()
-		return nil, fmt.Errorf("failed to open channel: %w", err)
-	}
-
-	if err := ch.Confirm(false); err != nil {
+	if err := m.channel.Confirm(false); err != nil {
 		return nil, err
 	}
 
-	confirms_chan := ch.NotifyPublish(make(chan amqp.Confirmation, 1))
+	confirms_chan := m.channel.NotifyPublish(make(chan amqp.Confirmation, 1))
 
-	if err := ch.Qos(1, 0, false); err != nil {
+	if err := m.channel.Qos(1, 0, false); err != nil {
 		return nil, err
 	}
 
@@ -63,14 +61,50 @@ func NewMiddleware(config *config.GlobalConfig) (*Middleware, error) {
 		"port", middlewareConfig.GetPort(),
 		"user", middlewareConfig.GetUsername())
 
-	middleware := &Middleware{
-		conn:          conn,
-		channel:       ch,
-		confirms_chan: confirms_chan,
-		config:        config,
-	}
+	m.confirms_chan = confirms_chan
 
-	return middleware, nil
+	return m, nil
+}
+
+func (m *Middleware) Connect(cfg *config.MiddlewareConfig) error {
+	delay := 5 * time.Second
+	maxDelay := 60 * time.Second
+
+	for {
+		select {
+		case <-m.ctx.Done():
+			return m.ctx.Err() // Context cancelled due to shutdown signal
+		default:
+			conn, err := amqp.DialConfig(
+				fmt.Sprintf("amqp://%s:%s@%s:%d/",
+					cfg.GetUsername(), cfg.GetPassword(), cfg.GetHost(), cfg.GetPort()),
+				amqp.Config{
+					Heartbeat: 5000 * time.Second,
+				},
+			)
+			if err == nil {
+				slog.Info("Connected to RabbitMQ",
+					"host", cfg.GetHost(),
+					"port", cfg.GetPort(),
+					"user", cfg.GetUsername())
+				m.channel, err = conn.Channel()
+				if err != nil {
+					slog.Info("Failed to create channel", "err", err)
+					continue
+				}
+				m.conn = conn
+				return nil
+			}
+			slog.Info("Failed to connect to RabbitMQ", "err", err, "retry_in", delay)
+			time.Sleep(delay)
+			if delay < maxDelay {
+				delay *= 2
+				if delay > maxDelay {
+					delay = maxDelay
+				}
+			}
+		}
+	}
 }
 
 func (m *Middleware) DeclareQueue(queueName string, durable bool) error {
@@ -331,25 +365,13 @@ func (m *Middleware) ensureConnection() error {
 
 	slog.Info("RabbitMQ connection lost, reconnecting...")
 
-	middlewareConfig := m.config.GetMiddlewareConfig()
-	url := fmt.Sprintf("amqp://%s:%s@%s:%d/",
-		middlewareConfig.GetUsername(), middlewareConfig.GetPassword(),
-		middlewareConfig.GetHost(), middlewareConfig.GetPort())
-
-	newConn, err := amqp.Dial(url)
-	if err != nil {
-		return fmt.Errorf("failed to reconnect to RabbitMQ: %w", err)
-	}
-
-	newCh, err := newConn.Channel()
-	if err != nil {
-		newConn.Close()
-		return fmt.Errorf("failed to create new channel: %w", err)
-	}
-
-	m.conn = newConn
-	m.channel = newCh
+	m.Connect(m.config.GetMiddlewareConfig())
 
 	slog.Info("Reconnected to RabbitMQ successfully")
 	return nil
+}
+
+func (m *Middleware) HandleSigterm() {
+	m.cancel()
+	slog.Info("Shutting down RabbitMQ middleware...")
 }

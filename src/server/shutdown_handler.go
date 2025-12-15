@@ -1,6 +1,7 @@
 package server
 
 import (
+	"connection-service/src/middleware"
 	"context"
 	"log/slog"
 	"os"
@@ -14,11 +15,15 @@ type ShutdownHandlerInterface interface {
 
 	// ShutdownServer initiates server shutdown
 	ShutdownServer()
+
+	// SetMiddleware sets the middleware for the shutdown handler
+	SetMiddleware(mw *middleware.Middleware)
 }
 
 // ShutdownHandler implements the ShutdownHandlerInterface
 type ShutdownHandler struct {
 	server *Server
+	middleware *middleware.Middleware
 }
 
 // NewShutdownHandler creates a new shutdown handler
@@ -74,6 +79,10 @@ func (h *ShutdownHandler) ShutdownServer() {
 		slog.Error("Error during HTTP server shutdown", "error", err)
 	}
 
+	if h.middleware != nil {
+		h.middleware.HandleSigterm()
+	}
+
 	// Close database connection
 	if h.server.database != nil {
 		h.server.database.Close()
@@ -81,4 +90,9 @@ func (h *ShutdownHandler) ShutdownServer() {
 	}
 
 	slog.Info("Server shutdown complete")
+}
+
+
+func (h *ShutdownHandler) SetMiddleware(mw *middleware.Middleware) {
+	h.middleware = mw
 }

@@ -114,3 +114,5 @@ func (sc *SessionController) SetSessionStatusToTimeout(ctx *gin.Context) {
 		Status:    "TIMEOUT",
 	})
 }
+
+

@@ -7,7 +7,6 @@ import (
 	"connection-service/src/middleware"
 	"connection-service/src/repository"
 	"connection-service/src/service"
-	"log"
 	"log/slog"
 
 	"github.com/gin-gonic/gin"
@@ -55,16 +54,10 @@ func InitializeSessionRoutes(r *gin.Engine, sessionController *controller.Sessio
 	}
 }
 
-func NewRouter(cfg *config.GlobalConfig, database *db.DB) *gin.Engine {
+func NewRouter(cfg *config.GlobalConfig, database *db.DB, rabbitmqMiddleware *middleware.Middleware) *gin.Engine {
 	r := createRouterFromConfig(cfg)
 
 	slog.Info("Initializing Connection Service router")
-
-	// Initialize RabbitMQ middleware
-	rabbitmqMiddleware, err := middleware.NewMiddleware(cfg)
-	if err != nil {
-		log.Fatalf("Failed to create RabbitMQ middleware: %v", err)
-	}
 
 	// Initialize RabbitMQ topology manager
 	tm := middleware.NewTopologyManager(cfg, rabbitmqMiddleware)

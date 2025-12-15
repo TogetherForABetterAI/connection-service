@@ -3,6 +3,7 @@ package server
 import (
 	"connection-service/src/config"
 	"connection-service/src/db"
+	"connection-service/src/middleware"
 	"connection-service/src/router"
 	"fmt"
 	"log/slog"
@@ -33,19 +34,9 @@ func NewServer(cfg *config.GlobalConfig) (*Server, error) {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 
-	// Create router
-	r := router.NewRouter(cfg, database)
-
-	// Create HTTP server
-	httpServer := &http.Server{
-		Addr:    fmt.Sprintf("%s:%s", cfg.GetHost(), cfg.GetPort()),
-		Handler: r,
-	}
-
 	server := &Server{
 		config:   cfg,
 		database: database,
-		http:     httpServer,
 	}
 
 	// Create and assign shutdown handler
@@ -69,11 +60,22 @@ func (s *Server) startServerGoroutine() chan error {
 	serverDone := make(chan error, 1)
 
 	go func() {
+
+		middleware, err := middleware.NewMiddleware(s.config)
+		s.shutdownHandler.SetMiddleware(middleware)
+		r := router.NewRouter(s.config, s.database, middleware)
+		// Create HTTP server
+		httpServer := &http.Server{
+			Addr:    fmt.Sprintf("%s:%s", s.config.GetHost(), s.config.GetPort()),
+			Handler: r,
+		}
+		s.http = httpServer
+
 		slog.Info("Starting connection service",
 			"host", s.config.GetHost(),
 			"port", s.config.GetPort())
 
-		err := s.startServer()
+		err = s.startServer()
 		serverDone <- err
 	}()
 
