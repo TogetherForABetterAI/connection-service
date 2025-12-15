@@ -149,6 +149,17 @@ func (s *ConnectionService) generateCredentials(UserID string) *schemas.RabbitMQ
 // validateConnection validates a client connection with the users-service
 // Ahora devuelve los datos del usuario si la validación es exitosa
 func (s *ConnectionService) validateConnection(token, userID string) (*schemas.UserInfo, string, error) {
+
+	if userID == "" || token == "" {
+		return nil, "", &schemas.ErrorResponse{
+			Type:     "https://connection-service.com/invalid-request",
+			Title:    "Invalid Request",
+			Status:   http.StatusBadRequest,
+			Detail:   "UserID and Token must be provided",
+			Instance: "/sessions/start",
+		}
+	}
+
 	// User Validation
 	userResp, err := http.Get(fmt.Sprintf("%s/users/%s", s.Config.GetUsersServiceURL(), userID))
 	if err != nil {
