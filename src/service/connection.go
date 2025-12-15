@@ -141,7 +141,7 @@ func (s *ConnectionService) generateCredentials(UserID string) *schemas.RabbitMQ
 	return &schemas.RabbitMQCredentials{
 		Username: UserID,
 		Password: "123",
-		Host:     s.Config.GetRabbitMQHost(),
+		Host:     s.Config.GetRabbitPublicIp(),
 		Port:     s.Config.GetRabbitMQPort(),
 	}
 }

@@ -50,6 +50,7 @@ type MiddlewareConfig struct {
 	username   string
 	password   string
 	maxRetries int
+	publicIp   string
 }
 
 // Getters for GlobalConfig
@@ -123,6 +124,14 @@ func (m *MiddlewareConfig) GetMaxRetries() int {
 	return m.maxRetries
 }
 
+func (m *MiddlewareConfig) GetPublicIp() string {
+	return m.publicIp
+}
+
+func (c *GlobalConfig) GetRabbitPublicIp() string {
+	return c.middlewareConfig.GetPublicIp()
+}
+
 // GetRabbitMQHost returns the RabbitMQ host from config
 func (c *GlobalConfig) GetRabbitMQHost() string {
 	return c.middlewareConfig.GetHost()
@@ -138,6 +147,11 @@ func NewConfig() (*GlobalConfig, error) {
 	rabbitHost := os.Getenv("RABBITMQ_HOST")
 	if rabbitHost == "" {
 		return nil, fmt.Errorf("RABBITMQ_HOST environment variable is required")
+	}
+
+	rabbitPublicIp := os.Getenv("RABBITMQ_PUBLIC_IP")
+	if rabbitPublicIp == "" {
+		return nil, fmt.Errorf("RABBITMQ_PUBLIC_IP environment variable is required")
 	}
 
 	rabbitPortStr := os.Getenv("RABBITMQ_PORT")
@@ -224,6 +238,7 @@ func NewConfig() (*GlobalConfig, error) {
 		username:   rabbitUser,
 		password:   rabbitPass,
 		maxRetries: 5, // default max retries
+		publicIp:   rabbitPublicIp,
 	}
 
 	// Create database config
